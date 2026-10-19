@@ -31,6 +31,7 @@ def main():
         if (
             path.name == "HANDOFF.md"
             or name == "build_for_mac.md"
+            or name == ".github/dependabot.yaml"
             or name.endswith(".snap.new")
         ):
             continue
