@@ -1,0 +1,18 @@
+---
+source: tui/src/chatwidget/tests/popups_and_settings.rs
+expression: popup
+---
+  Select Model and Effort
+  Access legacy models by running codex -m <model_name> or in your config.toml
+
+› 1. gpt-6.1-sol (current)  Latest workhorse model for coding and everyday
+                            work.
+  2. gpt-6-astra            Frontier intelligence for the most demanding work.
+  3. gpt-6-sol              Previous generation workhorse model.
+  4. gpt-6-luna             Fast and affordable model for easier tasks.
+  5. gpt-5.6-sol            Older generation workhorse model.
+  6. gpt-5.6-terra          Older balanced model for straightforward work.
+  7. gpt-5.6-luna           Older fast and efficient model.
+  8. gpt-5.5                Legacy coding model.
+
+  Press enter to confirm or esc to go back

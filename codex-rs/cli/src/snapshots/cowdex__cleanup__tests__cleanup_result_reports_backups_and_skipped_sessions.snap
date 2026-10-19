@@ -1,0 +1,5 @@
+---
+source: cli/src/cleanup_tests.rs
+expression: "super::report(12, 3, 104857600, 400, 2)"
+---
+Cleanup: removed 12 expired subagent sessions; trimmed 3 rollouts (100.0 MiB); removed 400 log records. Kept 2 rollouts in use, referenced, or without a safe checkpoint. Originals: backups/rollouts under Cowdex home.

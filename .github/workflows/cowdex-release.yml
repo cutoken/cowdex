@@ -1,0 +1,134 @@
+name: Cowdex release
+
+on:
+  push:
+    tags: ["cowdex-v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cowdex-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    # Keep development private; release builds run in the separate public repo.
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Validate release and create draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(python -c 'import tomllib; print(tomllib.load(open("codex-rs/Cargo.toml", "rb"))["workspace"]["package"]["version"])')
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            test "$GITHUB_REF_NAME" = "cowdex-v$version"
+            if gh release view "$GITHUB_REF_NAME" --json isDraft > /tmp/cowdex-release.json; then
+              python -c 'import json; assert json.load(open("/tmp/cowdex-release.json"))["isDraft"], "Release is already published"'
+            else
+              gh release create "$GITHUB_REF_NAME" --draft --target "$GITHUB_SHA" --title "Cowdex $version" --notes "Standalone Cowdex packages, including matching support binaries."
+            fi
+            cp scripts/install_cowdex.py /tmp/install.py
+            gh release upload "$GITHUB_REF_NAME" /tmp/install.py --clobber
+          fi
+
+  build:
+    needs: prepare
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 360
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+    env:
+      CARGO_BUILD_JOBS: "2"
+      CARGO_INCREMENTAL: "0"
+      CARGO_NET_GIT_FETCH_WITH_CLI: "true"
+      # Bound link memory and disk use on standard runners.
+      CARGO_PROFILE_RELEASE_LTO: "false"
+      CARGO_PROFILE_RELEASE_DEBUG: "0"
+      CARGO_PROFILE_RELEASE_STRIP: symbols
+      LIBSQLITE3_FLAGS: SQLITE_DISABLE_INTRINSIC
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: x86_64-unknown-linux-musl
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+          - runner: macos-15
+            target: aarch64-apple-darwin
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+          - runner: windows-2025
+            target: x86_64-pc-windows-msvc
+          - runner: windows-11-arm
+            target: aarch64-pc-windows-msvc
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@1.95.0
+        with:
+          targets: ${{ matrix.target }}
+      - if: runner.os == 'Linux'
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.14.0
+          use-cache: false
+      - if: runner.os == 'Linux'
+        name: Install musl build tools
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          bash .github/scripts/install-musl-build-tools.sh
+          echo 'AWS_LC_SYS_NO_JITTER_ENTROPY=1' >> "$GITHUB_ENV"
+      - if: runner.os == 'Windows'
+        uses: ./.github/actions/setup-msvc-env
+        with:
+          target: ${{ matrix.target }}
+      - name: Check packaging and installer
+        run: python -m unittest discover -s scripts -p 'test_cowdex_release.py'
+      - name: Build complete package
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          extension=tar.gz
+          if [ "$RUNNER_OS" = Windows ]; then extension=zip; fi
+          python scripts/build_codex_package.py --variant cowdex --target "$TARGET" --cargo-profile release --package-dir dist/package --archive-output "dist/cowdex-$TARGET.$extension"
+          python scripts/smoke_cowdex_package.py dist/package
+          python scripts/install_cowdex.py --archive "dist/cowdex-$TARGET.$extension" --package-root "$RUNNER_TEMP/cowdex-package" --bin-dir "$RUNNER_TEMP/cowdex-bin"
+          if [ "$RUNNER_OS" = Windows ]; then
+            MSYS_NO_PATHCONV=1 cmd.exe /c "$(cygpath -w "$RUNNER_TEMP/cowdex-bin/cowdex.cmd") --help"
+          else
+            "$RUNNER_TEMP/cowdex-bin/cowdex" --help
+          fi
+      - name: Upload directly to draft release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" dist/cowdex-* --clobber
+
+  publish:
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Publish only after every platform succeeds
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release edit "$GITHUB_REF_NAME" --draft=false --latest

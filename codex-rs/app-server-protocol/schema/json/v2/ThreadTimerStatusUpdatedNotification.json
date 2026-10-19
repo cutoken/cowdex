@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "properties": {
+    "activeCount": {
+      "description": "Number of timers that are currently scheduled for the thread.",
+      "format": "uint32",
+      "minimum": 0.0,
+      "type": "integer"
+    },
+    "nextFireAt": {
+      "description": "Earliest scheduled fire time as Unix seconds, or `null` when no timer is active.",
+      "format": "int64",
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "threadId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "activeCount",
+    "threadId"
+  ],
+  "title": "ThreadTimerStatusUpdatedNotification",
+  "type": "object"
+}

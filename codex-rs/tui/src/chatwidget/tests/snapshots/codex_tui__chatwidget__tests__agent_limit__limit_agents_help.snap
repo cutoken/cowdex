@@ -1,0 +1,5 @@
+---
+source: tui/src/chatwidget/tests/agent_limit.rs
+expression: "cell.display_lines(100).into_iter().map(|line|\nline.to_string()).collect::<Vec<_>>().join(\"\\n\")"
+---
+• Agent limit: 4 concurrent agents including the main agent. Use /limit_agents N to change it for this session.

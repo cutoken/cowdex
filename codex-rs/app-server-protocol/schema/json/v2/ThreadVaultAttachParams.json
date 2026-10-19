@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "properties": {
+    "profile": {
+      "description": "App-server-local path to a broker socket and one-time grant ticket profile.",
+      "type": "string"
+    },
+    "scope": {
+      "description": "Explicit aliases matching the preissued grant, at most eight.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "threadId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "profile",
+    "scope",
+    "threadId"
+  ],
+  "title": "ThreadVaultAttachParams",
+  "type": "object"
+}

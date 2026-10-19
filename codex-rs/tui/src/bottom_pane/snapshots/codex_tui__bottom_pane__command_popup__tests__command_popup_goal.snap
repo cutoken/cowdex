@@ -1,0 +1,15 @@
+---
+source: tui/src/bottom_pane/command_popup.rs
+expression: "format!(\"{buf:?}\")"
+---
+Buffer {
+    area: Rect { x: 0, y: 0, width: 80, height: 1 },
+    content: [
+        "  /goal  set/view a goal; /goal edit|pause|resume|clear                         ",
+    ],
+    styles: [
+        x: 0, y: 0, fg: Reset, bg: Reset, underline: Reset, modifier: NONE,
+        x: 2, y: 0, fg: Cyan, bg: Reset, underline: Reset, modifier: BOLD,
+        x: 55, y: 0, fg: Reset, bg: Reset, underline: Reset, modifier: NONE,
+    ]
+}

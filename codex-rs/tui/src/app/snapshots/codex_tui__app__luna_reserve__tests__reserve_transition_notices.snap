@@ -1,0 +1,6 @@
+---
+source: tui/src/app/luna_reserve_tests.rs
+expression: "format!(\"{}\\n{}\", reserve_notice(&reserve), reserve_notice(&normal))"
+---
+Ordinary usage is exhausted. Continuing with Luna Reserve.
+Ordinary usage is available again. Returning to GPT-6-Sol.

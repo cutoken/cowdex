@@ -1,0 +1,9 @@
+---
+source: tui/src/chatwidget/tests/slash_commands.rs
+expression: "lines_to_single_string(&cells[0])"
+---
+• Usage: /vault attach [--scope alias[,alias...]]
+       /vault attach <profile-path> --scope alias[,alias...]
+       /vault status
+       /vault detach
+Unlock the vault page first. With no arguments, attach uses the credentials selected there.

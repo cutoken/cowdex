@@ -1,0 +1,6 @@
+---
+source: cli/src/keepwarm_tests.rs
+expression: "report.to_string().replace(report_path.to_str().unwrap(), \"<REPORT_PATH>\")"
+---
+Research report saved to <REPORT_PATH>
+keepwarm@example.com account is refreshed.

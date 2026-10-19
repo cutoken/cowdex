@@ -1,0 +1,5 @@
+---
+source: tui/src/app/tests/session_controls.rs
+expression: lines_to_single_string(&cell.display_lines(100))
+---
+• Service tier set to priority for this session

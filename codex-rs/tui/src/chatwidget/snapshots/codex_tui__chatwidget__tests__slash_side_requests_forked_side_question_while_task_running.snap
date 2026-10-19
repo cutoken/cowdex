@@ -1,0 +1,11 @@
+---
+source: tui/src/chatwidget/tests/side.rs
+expression: normalized_backend_snapshot(terminal.backend())
+---
+"                                                                                "
+"• Working (0s • esc to interrupt)                                               "
+"                                                                                "
+"                                                                                "
+"› Ask Codex to do anything                                                      "
+"                                                                                "
+"  gpt-6.1-sol default · T 0 | CI 0 | NI 0 | OUT_R 0 | OUT_T 0 Side starting...  "

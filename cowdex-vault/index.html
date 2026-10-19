@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cowdex Vault</title>
+  <style>
+    :root { color-scheme: dark; font: 15px/1.55 system-ui, sans-serif; background: #121619; color: #edf1f0; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    main { width: min(920px, 100% - 40px); margin: 52px auto; }
+    header, .row, .card-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    header { margin-bottom: 32px; }
+    h1 { font-size: 26px; letter-spacing: -.7px; margin: 0; }
+    h2 { font-size: 19px; margin: 0 0 12px; }
+    h3 { font-size: 16px; margin: 0; overflow-wrap: anywhere; max-width: 100%; }
+    p { margin: 8px 0 20px; }
+    .muted, small { color: #abb7b6; }
+    .brand { color: #a5c6bc; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; }
+    .panel { background: #1a2024; border: 1px solid #354047; border-radius: 12px; padding: 26px; }
+    #locked { max-width: 460px; margin: 68px auto; }
+    label { display: block; font-weight: 550; margin-bottom: 7px; }
+    input[type=text], input[type=password], input[type=url], select { display: block; width: 100%; background: #11171b; border: 1px solid #536068; border-radius: 6px; padding: 11px 12px; font: inherit; color: inherit; }
+    input[readonly] { color: #abb7b6; background: #222b30; }
+    button { border: 1px solid #58676d; border-radius: 6px; padding: 10px 16px; background: transparent; color: inherit; font: inherit; font-weight: 550; cursor: pointer; }
+    button.primary { color: #10221c; background: #b1deca; border-color: #b1deca; }
+    button:hover { filter: brightness(1.12); }
+    button:disabled { opacity: .55; cursor: wait; }
+    :focus-visible { outline: 3px solid #d0f5e5; outline-offset: 3px; }
+    .field { margin-bottom: 20px; }
+    small { display: block; margin-top: 6px; font-size: 13px; }
+    .error { background: #40262a; color: #ffd3d5; border: 1px solid #915b60; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; }
+    #connection { margin-bottom: 22px; border-left: 3px solid #b1deca; }
+    #connection p { margin: 6px 0 0; }
+    code { font-size: 14px; color: #d0f5e5; overflow-wrap: anywhere; }
+    #credentials { display: grid; gap: 12px; margin-top: 16px; }
+    #approvals { margin-bottom: 24px; }
+    #approval-list { display: grid; gap: 12px; }
+    .pairing-code { display: block; font-size: 24px; letter-spacing: 2px; margin: 8px 0; }
+    .approval p { overflow-wrap: anywhere; }
+    .credential { padding: 19px 22px; }
+    .credential p { margin: 8px 0 0; overflow-wrap: anywhere; }
+    #editor { margin-top: 22px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    fieldset { margin: 0 0 20px; border: 0; padding: 0; }
+    legend { font-weight: 550; margin-bottom: 8px; }
+    .checks { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+    .check { display: flex; align-items: center; gap: 9px; font-weight: 400; margin: 0; min-height: 36px; }
+    input[type=checkbox] { accent-color: #b1deca; width: 18px; height: 18px; margin: 0; flex-shrink: 0; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; }
+    footer { color: #abb7b6; font-size: 13px; margin-top: 28px; }
+    [hidden] { display: none !important; }
+    @media (max-width: 600px) { main { width: calc(100% - 28px); margin: 26px auto; } .panel { padding: 20px; } .grid { grid-template-columns: 1fr; gap: 0; } #locked { margin: 36px auto; } .card-heading { flex-wrap: wrap; } }
+  </style>
+</head>
+<body>
+<main>
+  <header><div><div class="brand">Cowdex</div><h1>Credential vault</h1></div><button id="lock" hidden>Lock vault</button></header>
+  <div id="error" class="error" role="alert" tabindex="-1" hidden></div>
+  <p id="loading" role="status">Opening your vault…</p>
+  <section id="stopped" class="panel" hidden aria-labelledby="stopped-title" tabindex="-1">
+    <h2 id="stopped-title">Vault locked</h2><p>Credentials are no longer available to Cowdex. You can close this page.</p>
+    <p class="muted">To reopen your vault, run <code>cowdex-vault</code>.</p>
+  </section>
+  <section id="locked" class="panel" hidden aria-labelledby="unlock-title">
+    <h2 id="unlock-title">Unlock your vault</h2><p id="unlock-copy" class="muted"></p>
+    <form id="unlock-form">
+      <div class="field"><label for="password">Vault password</label><input id="password" type="password" autocomplete="current-password" required></div>
+      <div id="confirmation" class="field" hidden><label for="confirm">Confirm password</label><input id="confirm" type="password" autocomplete="new-password"></div>
+      <button id="unlock-submit" class="primary" type="submit">Unlock vault</button>
+    </form>
+    <small>Passwords and API tokens stay out of your Cowdex conversation.</small>
+  </section>
+  <section id="unlocked" hidden aria-label="Unlocked vault">
+    <div id="connection" class="panel" role="status"><h2 id="ready-title"></h2><p id="ready-copy"></p><small id="expiry"></small></div>
+    <section id="approvals" hidden aria-labelledby="approvals-title">
+      <h2 id="approvals-title">Approve a Cowdex attachment</h2>
+      <p class="muted">Compare the code with the one shown in Cowdex. Only approve an attachment you requested.</p>
+      <div id="approval-error" class="error" role="alert" hidden></div>
+      <div id="approval-list" aria-live="polite" aria-relevant="additions text"></div>
+    </section>
+    <div class="row"><h2 style="margin:0">Credentials</h2><button id="add" class="primary">Add credential</button></div>
+    <div id="credentials"></div>
+    <section id="editor" class="panel" hidden aria-labelledby="editor-title">
+      <h2 id="editor-title">Add credential</h2><p class="muted">Choose a provider and paste your key. Saved secrets are never displayed.</p>
+      <form id="credential-form">
+        <div class="field"><label for="template">Provider</label><select id="template"></select><small id="provider-help"></small></div>
+        <div class="grid">
+          <div class="field"><label for="alias">Name</label><input id="alias" type="text" maxlength="32" pattern="[A-Za-z0-9_-]+" placeholder="cloudflare" autocomplete="off" required><small>Letters, numbers, underscores or hyphens. Agents use this name.</small></div>
+          <div class="field"><label for="access">API access</label><select id="access"><option value="all">All API operations</option><option value="read">Read only</option><option value="custom">Custom restrictions</option></select><small>Your API key’s own permissions still apply.</small></div>
+        </div>
+        <div id="custom-provider" hidden>
+          <div class="field"><label for="origin">API address</label><input id="origin" type="url" placeholder="https://api.example.com"><small>HTTPS address only, without a path.</small></div>
+          <div class="grid">
+            <div class="field"><label for="auth">Authentication</label><select id="auth"><option value="bearer">Bearer token</option><option value="basic">Username and password (Basic)</option><option value="helio">MoonPay Commerce API keys</option></select></div>
+            <div class="field"><label for="body_format">Request format</label><select id="body_format"><option value="json">JSON</option><option value="form">Form encoded</option><option value="multipart">Multipart form (text fields)</option></select></div>
+          </div>
+        </div>
+        <div id="username-field" class="field" hidden><label id="username-label" for="username">Username</label><input id="username" type="password" autocomplete="new-password"><small id="username-help"></small></div>
+        <div class="field"><label id="token-label" for="token">API token</label><input id="token" type="password" autocomplete="new-password" required><small id="token-help"></small></div>
+        <div id="restrictions" hidden>
+          <div class="field"><label for="prefix">Allowed path prefix</label><input id="prefix" type="text" value="/" pattern="/.*"><small>Use / to allow any API path at this provider.</small></div>
+          <fieldset><legend>Allowed methods</legend><div id="methods" class="checks"></div></fieldset>
+        </div>
+        <div class="actions"><button id="save" type="submit" class="primary">Save credential</button><button id="cancel" type="button">Cancel</button></div>
+      </form>
+    </section>
+    <footer>Save up to 8 credentials for Cowdex and its subagents. You can close this page; the vault stays unlocked until the time shown above or until you lock it.</footer>
+  </section>
+</main>
+<script>
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD'];
+  let adminToken = '';
+  let templates = [], editing = null;
+  let approvalTimer, approvalVersion = '', approvalGeneration = 0;
+  for (const method of methods) {
+    const label = document.createElement('label'); label.className = 'check';
+    const input = document.createElement('input'); input.type = 'checkbox'; input.value = method; input.name = 'method';
+    label.append(input, document.createTextNode(method)); $('methods').append(label);
+  }
+  function showError(message) { $('error').textContent = message; $('error').hidden = !message; if (message) $('error').focus(); }
+  async function request(path, body) {
+    const headers = adminToken ? {Authorization: 'Bearer ' + adminToken} : {};
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    const response = await fetch('/api/' + path, {
+      method: body === undefined ? 'GET' : 'POST', headers,
+      body: body === undefined ? undefined : JSON.stringify(body), cache: 'no-store', credentials: 'omit'
+    });
+    const data = await response.json();
+    if (path === 'approvals' && (response.status === 401 || response.status === 403) && adminToken) showLocked();
+    if (!response.ok) throw new Error(data.error || 'The request could not be completed. Try again.');
+    return data;
+  }
+  function showLocked() {
+    adminToken = ''; clearTimeout(approvalTimer); approvalGeneration++;
+    $('credential-form').reset(); $('unlock-form').reset(); $('credentials').replaceChildren();
+    $('approval-list').replaceChildren(); approvalVersion = '';
+    $('unlocked').hidden = true; $('locked').hidden = true; $('lock').hidden = true;
+    $('stopped').hidden = false; $('stopped').focus();
+  }
+  function renderApprovals(approvals) {
+    const version = JSON.stringify(approvals);
+    $('approvals').hidden = !approvals.length;
+    if (version === approvalVersion) return;
+    approvalVersion = version;
+    const active = document.activeElement;
+    const activeCode = active?.closest('[data-code]')?.dataset.code;
+    const previous = new Map([...$('approval-list').children].map(card => [card.dataset.code, card]));
+    const cards = approvals.map(approval => {
+      const snapshot = JSON.stringify(approval), existing = previous.get(approval.code);
+      if (existing?.dataset.snapshot === snapshot) return existing;
+      const card = document.createElement('article'); card.className = 'panel approval'; card.dataset.code = approval.code; card.tabIndex = -1;
+      card.dataset.snapshot = snapshot;
+      const title = document.createElement('h3'); title.textContent = approval.approved ? 'Attachment approved' : 'Attachment request';
+      const code = document.createElement('code'); code.className = 'pairing-code'; code.textContent = approval.code;
+      const scope = document.createElement('p'); scope.textContent = 'Credentials: ' + approval.aliases.join(', ');
+      const expiry = document.createElement('small'); expiry.textContent = 'Complete attachment by ' + new Date(approval.expiresAt * 1000).toLocaleTimeString() + '.';
+      card.append(title, code, scope, expiry);
+      if (approval.approved) {
+        const next = document.createElement('p'); next.textContent = 'Return to Cowdex and repeat the same /vault attach command, including its options. Access lasts 24 hours or until the vault locks.'; card.append(next);
+      } else {
+        const actions = document.createElement('div'); actions.className = 'actions'; actions.style.marginTop = '16px';
+        for (const [action, label] of [['approve', 'Approve for 24 hours'], ['deny', 'Deny']]) {
+          const button = document.createElement('button'); button.textContent = label;
+          button.setAttribute('aria-label', label + ': ' + approval.code);
+          if (action === 'approve') button.className = 'primary';
+          button.onclick = async () => {
+            clearTimeout(approvalTimer); const generation = ++approvalGeneration;
+            actions.querySelectorAll('button').forEach(item => item.disabled = true);
+            $('approval-error').hidden = true;
+            try { const data = await request(action, {code: approval.code}); if (adminToken && generation === approvalGeneration) renderApprovals(data.approvals || []); }
+            catch (error) { $('approval-error').textContent = error instanceof TypeError ? 'Could not reach the vault. Try again.' : error.message; $('approval-error').hidden = false; }
+            finally { actions.querySelectorAll('button').forEach(item => item.disabled = false); if (adminToken && generation === approvalGeneration) pollApprovals(generation); }
+          };
+          actions.append(button);
+        }
+        card.append(actions);
+      }
+      return card;
+    });
+    for (const card of [...$('approval-list').children]) if (!cards.includes(card)) card.remove();
+    cards.forEach((card, index) => { if ($('approval-list').children[index] !== card) $('approval-list').insertBefore(card, $('approval-list').children[index] || null); });
+    if (activeCode && !active.isConnected) {
+      const card = [...$('approval-list').children].find(item => item.dataset.code === activeCode);
+      (card || $('add')).focus();
+    }
+  }
+  function pollApprovals(generation) {
+    clearTimeout(approvalTimer);
+    approvalTimer = setTimeout(async () => {
+      if (!adminToken || generation !== approvalGeneration) return;
+      try {
+        const data = await request('approvals');
+        if (!adminToken || generation !== approvalGeneration) return;
+        renderApprovals(data.approvals || []); $('approval-error').hidden = true;
+      } catch (error) {
+        if (!adminToken || generation !== approvalGeneration) return;
+        $('approvals').hidden = false; $('approval-error').textContent = 'Could not refresh attachment requests. Retrying…'; $('approval-error').hidden = false;
+      }
+      if (adminToken && generation === approvalGeneration) pollApprovals(generation);
+    }, 2000);
+  }
+  function render(data) {
+    clearTimeout(approvalTimer); approvalGeneration++;
+    $('loading').hidden = true; $('locked').hidden = data.unlocked; $('unlocked').hidden = !data.unlocked; $('lock').hidden = !data.unlocked;
+    $('editor').hidden = true; $('credential-form').reset();
+    templates = data.templates || [];
+    $('template').replaceChildren(...templates.map(template => new Option(template.label, template.id)));
+    if (!templates.some(template => template.id === 'custom')) $('template').add(new Option('Custom API', 'custom'));
+    if (!data.unlocked) {
+      $('password').value = ''; $('confirm').value = '';
+      $('unlock-title').textContent = data.exists ? 'Unlock your vault' : 'Create your vault';
+      $('unlock-copy').textContent = data.exists ? 'Enter your password to manage credentials and make them available to Cowdex.' : 'Choose a password to encrypt your API tokens on this computer.';
+      $('unlock-submit').textContent = data.exists ? 'Unlock vault' : 'Create vault';
+      $('confirmation').hidden = data.exists; $('confirm').required = !data.exists;
+      $('password').autocomplete = data.exists ? 'current-password' : 'new-password';
+      $('password').focus(); return;
+    }
+    const updated = data.templates && data.approvalsRequired;
+    $('add').disabled = !updated || data.credentials.length >= 8;
+    $('ready-title').textContent = !updated ? 'Vault update available' : data.ready ? 'Ready for Cowdex' : 'Add your first credential';
+    $('ready-copy').replaceChildren();
+    if (!updated) $('ready-copy').textContent = 'Lock vault and reopen cowdex-vault to load this update.';
+    else if (data.ready) {
+      const command = document.createElement('code'); command.textContent = '/vault attach';
+      $('ready-copy').append('Run ', command, ' in Cowdex, approve its matching code here, then repeat the same command, including its options.');
+      if (data.credentials.length > 8) $('ready-copy').append(' Your existing vault has more than 8 entries. The first 8 names alphabetically attach by default; use /vault attach --scope NAME to choose another credential.');
+    } else $('ready-copy').textContent = 'Save an API key, then return to Cowdex and run /vault attach.';
+    $('expiry').textContent = 'Unlocked until ' + new Date(data.expiresAt * 1000).toLocaleString() + '.';
+    renderApprovals(data.approvals || []);
+    if (updated && adminToken) pollApprovals(approvalGeneration);
+    $('credentials').replaceChildren();
+    if (!data.credentials.length) {
+      const empty = document.createElement('p'); empty.className = 'panel muted'; empty.textContent = 'No credentials yet. Add your first API token to get started.'; $('credentials').append(empty);
+    }
+    for (const credential of data.credentials) {
+      const card = document.createElement('article'); card.className = 'panel credential';
+      const heading = document.createElement('div'); heading.className = 'card-heading';
+      const title = document.createElement('h3'); title.textContent = credential.alias;
+      const edit = document.createElement('button'); edit.textContent = 'Edit'; edit.setAttribute('aria-label', 'Edit ' + credential.alias); edit.onclick = () => openEditor(credential);
+      edit.disabled = !updated; heading.append(title, edit);
+      const destination = document.createElement('p'); destination.className = 'muted';
+      const provider = templates.find(template => template.id === credential.template);
+      const access = accessMode(credential);
+      destination.textContent = (provider && provider.id !== 'custom' ? provider.label : credential.origin) + ' · ' + (access === 'all' ? 'All API operations' : access === 'read' ? 'Read only' : 'Custom restrictions');
+      card.append(heading, destination); $('credentials').append(card);
+    }
+  }
+  function accessMode(credential) {
+    const sameMethods = expected => credential.methods.length === expected.length && expected.every(method => credential.methods.includes(method));
+    return credential.prefix !== '/' ? 'custom' : sameMethods(methods) ? 'all' : sameMethods(['GET', 'HEAD']) ? 'read' : 'custom';
+  }
+  function updateFields() {
+    const template = templates.find(item => item.id === $('template').value);
+    const custom = $('template').value === 'custom';
+    $('custom-provider').hidden = !custom; $('origin').required = custom;
+    if (!custom && template) {
+      $('origin').value = template.origin; $('auth').value = template.auth; $('body_format').value = template.body_format;
+    }
+    $('provider-help').textContent = template && !custom ? template.help : 'Choose how this API authenticates requests.';
+    const basic = ['basic', 'helio'].includes($('auth').value);
+    const keepSaved = editing && (editing.template || 'custom') === $('template').value && (editing.auth || 'bearer') === $('auth').value && editing.origin === $('origin').value.trim() && (editing.body_format || 'json') === $('body_format').value;
+    const fixedUsername = !custom && template?.fixed_username;
+    if (fixedUsername) $('username').value = fixedUsername;
+    $('username-field').hidden = !basic || !!fixedUsername; $('username').required = basic && !fixedUsername && !(keepSaved && editing.hasUsername);
+    $('username-label').textContent = template && !custom ? template.username_label || 'Username' : $('auth').value === 'helio' ? 'Public API key' : 'Username';
+    $('token-label').textContent = template && !custom ? template.token_label : $('auth').value === 'helio' ? 'Secret API key' : basic ? 'Password or API secret' : 'API token';
+    $('token').required = !keepSaved;
+    $('token-help').textContent = keepSaved ? 'Leave blank to keep the saved secret, or paste its replacement.' : 'Paste your secret here. It will be stored encrypted.';
+    $('username-help').textContent = keepSaved && editing.hasUsername ? 'Leave blank to keep the saved value.' : 'Enter the identifier used to authenticate this key.';
+    $('restrictions').hidden = $('access').value !== 'custom'; $('prefix').required = !$('restrictions').hidden;
+  }
+  function openEditor(credential) {
+    editing = credential || null;
+    showError(''); $('credential-form').reset(); $('editor').hidden = false;
+    $('editor-title').textContent = credential ? 'Edit credential' : 'Add credential';
+    $('template').value = credential ? credential.template || 'custom' : templates[0]?.id || 'custom';
+    for (const field of ['alias', 'origin', 'prefix']) $(field).value = credential ? credential[field] : field === 'prefix' ? '/' : field === 'alias' ? $('template').value.replaceAll('-', '_') : '';
+    $('alias').readOnly = !!credential; $('auth').value = credential?.auth || 'bearer'; $('body_format').value = credential?.body_format || 'json';
+    $('access').value = credential ? accessMode(credential) : 'all';
+    document.querySelectorAll('[name=method]').forEach(input => input.checked = (credential ? credential.methods : methods).includes(input.value));
+    updateFields(); $('editor').scrollIntoView({block: 'nearest'}); $(credential ? 'token' : 'template').focus();
+  }
+  $('template').onchange = () => {
+    if (!editing) $('alias').value = $('template').value === 'custom' ? '' : $('template').value.replaceAll('-', '_');
+    $('token').value = ''; $('username').value = ''; updateFields();
+  };
+  $('auth').onchange = updateFields; $('access').onchange = updateFields;
+  $('origin').oninput = updateFields; $('body_format').onchange = updateFields;
+  async function submit(button, work) {
+    showError(''); button.disabled = true;
+    try { await work(); } catch (error) { showError(error instanceof TypeError ? 'Could not reach the vault. Check that it is still running.' : error.message); }
+    finally { button.disabled = false; }
+  }
+  $('unlock-form').onsubmit = event => {
+    event.preventDefault(); submit($('unlock-submit'), async () => {
+      const data = await request('unlock', {password: $('password').value, confirmPassword: $('confirm').value});
+      adminToken = data.adminToken; delete data.adminToken;
+      $('password').value = ''; $('confirm').value = ''; render(data); $('add').focus();
+    });
+  };
+  $('credential-form').onsubmit = event => {
+    event.preventDefault(); submit($('save'), async () => {
+      const body = {token: $('token').value, username: $('username').value, methods: $('access').value === 'all' ? methods : $('access').value === 'read' ? ['GET', 'HEAD'] : [...document.querySelectorAll('[name=method]:checked')].map(input => input.value)};
+      for (const field of ['alias', 'origin', 'template', 'auth', 'body_format']) body[field] = $(field).value.trim();
+      body.prefix = $('access').value === 'custom' ? $('prefix').value.trim() : '/';
+      if (!body.methods.length) throw new Error('Select at least one allowed method.');
+      const data = await request('save', body); $('token').value = ''; $('username').value = ''; render(data); $('add').focus();
+    });
+  };
+  $('add').onclick = () => openEditor();
+  $('cancel').onclick = () => { $('credential-form').reset(); $('editor').hidden = true; $('add').focus(); };
+  $('lock').onclick = () => submit($('lock'), async () => {
+    await request('lock', {}); showLocked();
+  });
+  request('state').then(render).catch(() => { $('loading').hidden = true; showError('Could not open the vault. Check that it is running, then reload this page.'); });
+</script>
+</body>
+</html>

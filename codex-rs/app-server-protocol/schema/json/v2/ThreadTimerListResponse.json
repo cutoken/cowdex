@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "ThreadTimer": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "intervalMs": {
+          "format": "uint64",
+          "minimum": 0.0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "nextFireAt": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "reminder": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "nextFireAt",
+        "reminder"
+      ],
+      "type": "object"
+    }
+  },
+  "properties": {
+    "data": {
+      "items": {
+        "$ref": "#/definitions/ThreadTimer"
+      },
+      "type": "array"
+    },
+    "nextCursor": {
+      "description": "Opaque cursor for the next page, or `null` when no timers remain.",
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "data"
+  ],
+  "title": "ThreadTimerListResponse",
+  "type": "object"
+}

@@ -1,0 +1,5 @@
+---
+source: tui/src/chatwidget/tests/slash_commands.rs
+expression: "SlashCommand::Cleanup.description()"
+---
+reclaim session storage and logs; back up trimmed rollouts

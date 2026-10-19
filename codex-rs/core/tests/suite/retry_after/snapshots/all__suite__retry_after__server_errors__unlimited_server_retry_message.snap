@@ -1,0 +1,5 @@
+---
+source: core/tests/suite/retry_after/server_errors.rs
+expression: error.message
+---
+Server error. Retrying in 60s (attempt 1; no retry limit)
