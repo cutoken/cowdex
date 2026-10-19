@@ -117,9 +117,9 @@ python3 scripts/install_cowdex.py --archive /path/to/cowdex-package.tar.gz
 Pass `--release VERSION` to select a published version, or `--package-root` and
 `--bin-dir` to choose installation locations.
 
-Release targets cover Linux x64/ARM64, macOS Intel/Apple Silicon, and Windows
-x64/ARM64. Linux is validated locally; the Mac/Windows builds await their first
-hosted run. Mac packages initially omit Developer ID signing and notarization.
+Release packages cover Linux x64/ARM64, macOS Intel/Apple Silicon, and Windows
+x64/ARM64. Each platform passes bundled code-mode and installation smoke checks
+on GitHub-hosted runners. Mac packages omit Developer ID signing and notarization.
 
 The vault manager currently supports Linux only. It requires Python, venv/pip
 and installs its Python dependency on first use.
