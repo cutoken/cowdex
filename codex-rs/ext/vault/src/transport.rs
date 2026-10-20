@@ -13,9 +13,9 @@ pub(super) struct Profile {
 }
 
 pub(super) async fn read_profile(path: PathBuf) -> Result<Profile, String> {
-    #[cfg(unix)]
     {
         use std::io::Read;
+        #[cfg(unix)]
         use std::os::unix::fs::OpenOptionsExt;
         tokio::task::spawn_blocking(move || {
             let path = if path.as_os_str().is_empty() {
@@ -23,6 +23,7 @@ pub(super) async fn read_profile(path: PathBuf) -> Result<Profile, String> {
                     .map(PathBuf::from)
                     .or_else(|| {
                         std::env::var_os("HOME")
+                            .or_else(|| std::env::var_os("USERPROFILE"))
                             .map(|home| PathBuf::from(home).join(".local/share/cowdex-vault"))
                     })
                     .ok_or("Cannot locate the default vault")?
@@ -33,13 +34,13 @@ pub(super) async fn read_profile(path: PathBuf) -> Result<Profile, String> {
             if !path.is_absolute() {
                 return Err("Vault attachment profile must use an absolute path".into());
             }
-            let file = std::fs::OpenOptions::new()
-                .read(true)
-                .custom_flags(libc::O_NOFOLLOW)
-                .open(path)
-                .map_err(
-                    |_| "Open the vault page, unlock it, and make credentials available to Cowdex",
-                )?;
+            let mut options = std::fs::OpenOptions::new();
+            options.read(true);
+            #[cfg(unix)]
+            options.custom_flags(libc::O_NOFOLLOW);
+            let file = options.open(path).map_err(
+                |_| "Open the vault page, unlock it, and make credentials available to Cowdex",
+            )?;
             if !file
                 .metadata()
                 .map_err(|_| "Cannot inspect vault attachment profile")?
@@ -56,7 +57,7 @@ pub(super) async fn read_profile(path: PathBuf) -> Result<Profile, String> {
             }
             let profile: Profile =
                 serde_json::from_slice(&bytes).map_err(|_| "Invalid vault attachment profile")?;
-            if !profile.socket.is_absolute()
+            if (tcp_address(&profile.socket)?.is_none() && !profile.socket.is_absolute())
                 || profile.ticket.is_empty()
                 || profile.ticket.len() > 4096
             {
@@ -67,33 +68,60 @@ pub(super) async fn read_profile(path: PathBuf) -> Result<Profile, String> {
         .await
         .map_err(|_| "Cannot read vault attachment profile")?
     }
-    #[cfg(not(unix))]
-    {
-        let _ = path;
-        Err("Vault attachment currently requires Unix sockets".into())
+}
+
+fn tcp_address(socket: &Path) -> Result<Option<std::net::SocketAddr>, String> {
+    let Some(value) = socket
+        .to_str()
+        .and_then(|value| value.strip_prefix("tcp://"))
+    else {
+        return Ok(None);
+    };
+    let address: std::net::SocketAddr =
+        value.parse().map_err(|_| "Invalid vault broker address")?;
+    if address.ip() != std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST) || address.port() == 0 {
+        return Err("Vault TCP broker must use 127.0.0.1".into());
     }
+    Ok(Some(address))
 }
 
 pub(super) async fn exchange(socket: &Path, value: Value) -> Result<Value, String> {
-    #[cfg(unix)]
     {
         use tokio::io::AsyncBufReadExt;
         use tokio::io::AsyncReadExt;
         use tokio::io::AsyncWriteExt;
         let result = tokio::time::timeout(std::time::Duration::from_secs(30), async {
-            let mut stream = tokio::net::UnixStream::connect(socket)
-                .await
-                .map_err(|_| "Vault broker is unavailable")?;
+            let (input, mut output): (
+                Box<dyn tokio::io::AsyncRead + Unpin + Send>,
+                Box<dyn tokio::io::AsyncWrite + Unpin + Send>,
+            ) = if let Some(address) = tcp_address(socket)? {
+                let stream = tokio::net::TcpStream::connect(address)
+                    .await
+                    .map_err(|_| "Vault broker is unavailable")?;
+                let (input, output) = stream.into_split();
+                (Box::new(input), Box::new(output))
+            } else {
+                #[cfg(unix)]
+                {
+                    let stream = tokio::net::UnixStream::connect(socket)
+                        .await
+                        .map_err(|_| "Vault broker is unavailable")?;
+                    let (input, output) = stream.into_split();
+                    (Box::new(input), Box::new(output))
+                }
+                #[cfg(not(unix))]
+                return Err("This vault broker must use a loopback TCP attachment profile".into());
+            };
             let mut request = serde_json::to_vec(&value).map_err(|_| "Invalid vault request")?;
             request.push(b'\n');
             if request.len() > 65536 {
                 return Err("Vault request is too large".into());
             }
-            stream
+            output
                 .write_all(&request)
                 .await
                 .map_err(|_| "Vault broker request failed")?;
-            let mut reader = tokio::io::BufReader::new(stream.take(65537));
+            let mut reader = tokio::io::BufReader::new(input.take(65537));
             let mut bytes = Vec::new();
             reader
                 .read_until(b'\n', &mut bytes)
@@ -114,9 +142,8 @@ pub(super) async fn exchange(socket: &Path, value: Value) -> Result<Value, Strin
         .await;
         result.map_err(|_| "Vault broker timed out")?
     }
-    #[cfg(not(unix))]
-    {
-        let _ = (socket, value);
-        Err("Vault attachment currently requires Unix sockets".into())
-    }
 }
+
+#[cfg(test)]
+#[path = "transport_tests.rs"]
+mod tests;

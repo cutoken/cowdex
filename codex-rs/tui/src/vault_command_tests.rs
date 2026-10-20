@@ -75,7 +75,7 @@ fn pending_approval_snapshot_and_error_boundary() {
     insta::assert_snapshot!(approval_text(&error("thread/vault/attach", /*code*/ -32600, message)).unwrap(), @"
     Vault approval required: ABCDEF123456
     Compare this code in the vault page and approve the requested credentials.
-    Then repeat the same /vault attach command, including its options. Access lasts up to one hour.
+    Then repeat the same /vault attach command, including its options. Access lasts up to 24 hours.
     ");
     for invalid in [
         error("thread/vault/status", /*code*/ -32600, message),

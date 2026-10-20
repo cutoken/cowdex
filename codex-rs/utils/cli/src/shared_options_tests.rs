@@ -11,6 +11,56 @@ struct TestCli {
     overrides: CliConfigOverrides,
 }
 
+#[test]
+fn unified_team_options_preserve_the_lead_and_set_worker_defaults() {
+    let mut cli = TestCli::parse_from([
+        "cowdex",
+        "--ultra",
+        "--model",
+        "gpt-6.1-sol",
+        "--boss",
+        "luna",
+        "--worker-effort",
+        "low",
+    ]);
+    cli.shared.take_config_overrides(&mut cli.overrides);
+    assert_eq!(cli.shared.model.as_deref(), Some("gpt-6.1-sol"));
+    assert!(cli.overrides.raw_overrides.contains(&"features.multi_agent_v2.boss_mode={enabled=true,model=\"gpt-6-luna\",reasoning_effort=\"low\"}".to_string()));
+    assert!(
+        cli.overrides
+            .raw_overrides
+            .contains(&r#"model_reasoning_effort="ultra""#.to_string())
+    );
+    let mut cli = TestCli::parse_from(["cowdex", "--boss", "sol"]);
+    cli.shared.take_config_overrides(&mut cli.overrides);
+    assert_eq!(cli.shared.model.as_deref(), Some("gpt-6-astra"));
+    assert!(cli.overrides.raw_overrides.contains(&"features.multi_agent_v2.boss_mode={enabled=true,model=\"gpt-6.1-sol\",reasoning_effort=\"medium\"}".to_string()));
+}
+
+#[test]
+fn worker_options_merge_across_exec_and_resume() {
+    let root = TestCli::parse_from(["cowdex", "--boss", "sol", "--worker-effort", "high"]);
+    let mut exec = SharedCliOptions::default();
+    exec.inherit_exec_root_options(&root.shared);
+    assert_eq!(exec.boss.as_deref(), Some("sol"));
+    assert_eq!(exec.worker_effort, Some(ReasoningEffort::High));
+    let child = TestCli::parse_from(["cowdex", "--boss", "luna", "--worker-effort", "low"]);
+    exec.apply_subcommand_overrides(child.shared);
+    assert_eq!(exec.boss.as_deref(), Some("luna"));
+    assert_eq!(exec.worker_effort, Some(ReasoningEffort::Low));
+    let provider = TestCli::parse_from(["cowdex", "--zai", "--ultra"]);
+    exec.apply_subcommand_overrides(provider.shared);
+    let mut overrides = CliConfigOverrides::default();
+    exec.take_config_overrides(&mut overrides);
+    assert_eq!(exec.model.as_deref(), Some("glm-5.3"));
+    assert!(
+        !overrides
+            .raw_overrides
+            .iter()
+            .any(|value| value.starts_with("features.multi_agent_v2.boss_mode="))
+    );
+}
+
 fn expected_preset_overrides(enabled_setting: Option<&str>) -> Vec<String> {
     std::iter::once(r#"model_reasoning_effort="ultra""#.to_string())
         .chain(
@@ -21,6 +71,9 @@ fn expected_preset_overrides(enabled_setting: Option<&str>) -> Vec<String> {
                 )
             }),
         )
+        .chain(std::iter::once(
+            "features.multi_agent_v2.enabled=true".to_string(),
+        ))
         .collect()
 }
 
@@ -140,7 +193,6 @@ fn astra_fixed_worker_presets_select_main_effort_and_enable_worker_policy() {
 fn astra_presets_reject_conflicting_model_or_each_other() {
     for args in [
         vec!["cowdex", "--astra-ultra", "--astra-boss"],
-        vec!["cowdex", "--astra-ultra", "--model", "gpt-5.6-sol"],
         vec!["cowdex", "--astra-boss", "--model", "gpt-5.6-sol"],
         vec!["cowdex", "--astra-ultra-low", "--astra-boss-low"],
         vec!["cowdex", "--astra-ultra-low", "--astra-ultra"],
@@ -212,7 +264,7 @@ fn external_provider_flags_select_their_provider_and_model() {
             args.iter()
                 .filter_map(toml::Value::as_str)
                 .collect::<Vec<_>>(),
-            vec!["internal-cando-credential", provider_id, env_key]
+            vec!["internal-provider-credential", provider_id, env_key]
         );
     }
 }
@@ -245,9 +297,11 @@ fn external_providers_support_ultra_mode_without_changing_model() {
 
         assert_eq!(cli.shared.model.as_deref(), Some(model));
         assert_eq!(cli.shared.ultra_effort, Some(effort));
-        assert_eq!(
-            cli.overrides.raw_overrides.last().map(String::as_str),
-            Some("features.multi_agent_v2.astra_boss_low=false")
+        assert!(
+            cli.overrides
+                .raw_overrides
+                .iter()
+                .any(|value| value == "features.multi_agent_v2.enabled=true")
         );
         assert!(
             cli.overrides

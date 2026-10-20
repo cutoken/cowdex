@@ -473,9 +473,14 @@ fn session_flags_select_astra_worker_preset(config: &Config) -> bool {
                 .and_then(|features| features.get("multi_agent_v2"))
                 .and_then(toml::Value::as_table)
                 .is_some_and(|multi_agent_v2| {
-                    ["astra_boss", "astra_ultra_low", "astra_boss_low"]
-                        .iter()
-                        .any(|setting| multi_agent_v2.contains_key(*setting))
+                    [
+                        "boss_mode",
+                        "astra_boss",
+                        "astra_ultra_low",
+                        "astra_boss_low",
+                    ]
+                    .iter()
+                    .any(|setting| multi_agent_v2.contains_key(*setting))
                 })
         })
 }
@@ -1413,21 +1418,28 @@ impl Session {
                     .apply_rollout_reconstruction(&turn_context, &rollout_items)
                     .await;
                 if session_flags_select_astra_worker_preset(&turn_context.config)
-                    && let Some(saved_boss_mode) = rollout_items
-                        .iter()
-                        .rev()
-                        .find_map(|item| match item {
-                            RolloutItem::TurnContext(context) => Some(context),
-                            _ => None,
+                    && let Some(settings) = turn_context
+                        .config
+                        .multi_agent_v2
+                        .boss_mode
+                        .clone()
+                        .or_else(|| {
+                            rollout_items
+                                .iter()
+                                .rev()
+                                .find_map(|item| match item {
+                                    RolloutItem::TurnContext(context) => Some(context),
+                                    _ => None,
+                                })
+                                .and_then(|context| context.boss_mode.clone())
+                                .filter(|settings| settings.enabled)
+                                .map(|saved| BossModeSettings {
+                                    enabled: false,
+                                    ..saved
+                                })
                         })
-                        .and_then(|context| context.boss_mode.clone())
-                        .filter(|settings| settings.enabled)
                 {
-                    self.record_boss_mode_change(&BossModeSettings {
-                        enabled: false,
-                        ..saved_boss_mode
-                    })
-                    .await;
+                    self.record_boss_mode_change(&settings).await;
                 }
 
                 // If resuming, warn when the last recorded model differs from the current one.

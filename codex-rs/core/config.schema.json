@@ -352,6 +352,27 @@
       },
       "type": "object"
     },
+    "BossModeConfigToml": {
+      "additionalProperties": false,
+      "description": "Fixed worker defaults in configuration files; wire settings use their own camelCase shape.",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "model": {
+          "type": "string"
+        },
+        "reasoning_effort": {
+          "$ref": "#/definitions/ReasoningEffort"
+        }
+      },
+      "required": [
+        "enabled",
+        "model",
+        "reasoning_effort"
+      ],
+      "type": "object"
+    },
     "BundledSkillsConfig": {
       "additionalProperties": false,
       "properties": {
@@ -1991,6 +2012,14 @@
         "astra_ultra_low": {
           "description": "Force Astra Ultra Low subagents to use GPT-6 Astra at low effort.",
           "type": "boolean"
+        },
+        "boss_mode": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/BossModeConfigToml"
+            }
+          ],
+          "description": "Fixed worker model and reasoning effort, also configurable with /boss."
         },
         "default_wait_timeout_ms": {
           "format": "int64",

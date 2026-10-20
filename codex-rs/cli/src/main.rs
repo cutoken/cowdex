@@ -46,7 +46,6 @@ use supports_color::Stream;
 
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 mod app_cmd;
-mod cando_credentials;
 mod cleanup;
 mod cloud_config;
 #[cfg(any(target_os = "macos", target_os = "windows"))]
@@ -58,6 +57,7 @@ mod marketplace_cmd;
 mod mcp_cmd;
 mod migrate_rollouts;
 mod plugin_cmd;
+mod provider_credentials;
 mod remote_control_cmd;
 #[cfg(target_os = "windows")]
 mod sandbox_setup;
@@ -217,9 +217,13 @@ enum Subcommand {
     #[clap(hide = true, name = "stdio-to-uds")]
     StdioToUds(StdioToUdsCommand),
 
-    /// Internal: resolve a provider key from the Cando credential store.
-    #[clap(hide = true, name = "internal-cando-credential")]
-    InternalCandoCredential(cando_credentials::Command),
+    /// Internal: resolve a provider key from the environment or Cowdex credentials.
+    #[clap(
+        hide = true,
+        name = "internal-provider-credential",
+        alias = "internal-cando-credential"
+    )]
+    InternalCandoCredential(provider_credentials::Command),
 
     /// [EXPERIMENTAL] Run the standalone exec-server service.
     ExecServer(ExecServerCommand),
@@ -477,6 +481,10 @@ enum ExecpolicySubcommand {
 struct LoginCommand {
     #[clap(skip)]
     config_overrides: CliConfigOverrides,
+
+    /// Save a provider key instead of signing in to OpenAI. Reads the key from stdin.
+    #[arg(long, value_parser = ["zai", "openrouter"], requires = "with_api_key", conflicts_with_all = ["use_device_code", "with_access_token"])]
+    provider: Option<String>,
 
     #[arg(
         long = "with-api-key",
@@ -1384,6 +1392,15 @@ async fn cli_main(
                 &mut login_cli.config_overrides,
                 root_config_overrides.clone(),
             );
+            if let Some(provider) = login_cli.provider {
+                anyhow::ensure!(
+                    login_cli.action.is_none(),
+                    "Choose provider login or login status"
+                );
+                let key = read_api_key_from_stdin();
+                provider_credentials::save(&provider, &key)?;
+                return Ok(());
+            }
             match login_cli.action {
                 Some(LoginSubcommand::Status) => {
                     run_login_status(login_cli.config_overrides).await;
@@ -1627,7 +1644,7 @@ async fn cli_main(
             codex_stdio_to_uds::run(socket_path.as_path()).await?;
         }
         Some(Subcommand::InternalCandoCredential(cmd)) => {
-            cando_credentials::run(&cmd)?;
+            provider_credentials::run(&cmd)?;
         }
         Some(Subcommand::ExecServer(cmd)) => {
             reject_remote_mode_for_subcommand(

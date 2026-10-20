@@ -37,7 +37,7 @@ The `version` field in `codex-package.json` is
 read from `[workspace.package].version` in `codex-rs/Cargo.toml`.
 
 Cowdex packages also contain `install.py`, attribution files and the vault manager
-under `codex-resources/cowdex-vault`. The installer installs all helpers together
+as the self-contained `bin/cowdex-vault` executable (`.exe` on Windows). The installer installs all helpers together
 in a Cowdex-only package directory and preserves previous releases.
 
 ## Source-built artifacts

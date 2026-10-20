@@ -33,6 +33,7 @@ class CowdexReleaseTest(unittest.TestCase):
             bwrap_bin=binary if spec.is_linux else None,
             codex_command_runner_bin=binary if spec.is_windows else None,
             codex_windows_sandbox_setup_bin=binary if spec.is_windows else None,
+            vault_bin=binary,
         )
         build_package_dir(package, "1.2.3", PACKAGE_VARIANTS["cowdex"], spec, inputs)
         validate_package_dir(
@@ -103,7 +104,15 @@ class CowdexReleaseTest(unittest.TestCase):
             self.assertTrue(second.is_dir())
             self.assertNotEqual(first, second)
             self.assertEqual(regular_helper.read_text(), "regular Codex host")
+            vault_launcher = bin_dir / (
+                "cowdex-vault.cmd" if os.name == "nt" else "cowdex-vault"
+            )
+            self.assertTrue(vault_launcher.is_file())
             if os.name != "nt":
+                self.assertEqual(
+                    subprocess.check_output([vault_launcher, "--version"], text=True),
+                    "--version\n",
+                )
                 output = subprocess.check_output(
                     [bin_dir / "cowdex", "hello world"], text=True
                 )

@@ -4,7 +4,7 @@ use super::*;
 use codex_protocol::openai_models::ModelPreset;
 use codex_protocol::protocol::BossModeSettings;
 
-const USAGE: &str = "Use /boss <model> <effort>, /boss on, or /boss off. Models: astra, sol, terra, luna, or a full model ID. Applies to new workers.";
+const USAGE: &str = "Use /boss <model> [effort], /boss on, or /boss off. Models: astra, sol, luna, or a full model ID. Applies to new workers; /model changes the lead.";
 
 impl ChatWidget {
     pub(super) fn dispatch_boss_command(&mut self, args: &str) {
@@ -32,7 +32,7 @@ impl ChatWidget {
                         "Boss off · saved: {} {}",
                         settings.model, settings.reasoning_effort
                     ),
-                    None => "Boss off · default: sol medium".to_string(),
+                    None => "Boss off · workers follow the lead".to_string(),
                 };
                 self.add_info_message(format!("{status}\n{USAGE}"), /*hint*/ None);
             }
@@ -49,7 +49,7 @@ pub(super) fn parse_boss_command(
     let words: Vec<_> = args.split_whitespace().collect();
     let mut settings = current.cloned().unwrap_or(BossModeSettings {
         enabled: false,
-        model: "gpt-5.6-sol".to_string(),
+        model: "gpt-6.1-sol".to_string(),
         reasoning_effort: ReasoningEffortConfig::Medium,
     });
     match words.as_slice() {
@@ -59,15 +59,16 @@ pub(super) fn parse_boss_command(
             return Ok(Some(settings));
         }
         ["on"] => settings.enabled = true,
-        [model, effort] => {
+        [model] | [model, _] => {
             settings.model = match *model {
                 "astra" => "gpt-6-astra",
-                "sol" => "gpt-5.6-sol",
+                "sol" => "gpt-6.1-sol",
                 "terra" => "gpt-5.6-terra",
-                "luna" => "gpt-5.6-luna",
+                "luna" => "gpt-6-luna",
                 model => model,
             }
             .to_string();
+            let effort = words.get(1).copied().unwrap_or("medium");
             settings.reasoning_effort = effort
                 .parse()
                 .map_err(|_| format!("Unknown reasoning effort '{effort}'. {USAGE}"))?;
@@ -98,9 +99,9 @@ pub(super) fn parse_boss_command(
 pub(super) fn boss_status_label(settings: &BossModeSettings) -> String {
     let model = match settings.model.as_str() {
         "gpt-6-astra" => "astra",
-        "gpt-5.6-sol" => "sol",
+        "gpt-6.1-sol" => "sol",
         "gpt-5.6-terra" => "terra",
-        "gpt-5.6-luna" => "luna",
+        "gpt-6-luna" => "luna",
         model => model,
     };
     format!("Boss {model} {}", settings.reasoning_effort)

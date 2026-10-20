@@ -268,6 +268,8 @@ pub async fn run_main(cli: Cli, arg0_paths: Arg0DispatchPaths) -> anyhow::Result
         images,
         model: model_cli_arg,
         astra_ultra: _,
+        boss: _,
+        worker_effort: _,
         astra_ultra_low: _,
         astra_ultra_miser: _,
         astra_boss: _,

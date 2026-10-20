@@ -614,6 +614,7 @@ non_code_mode_only = true
     assert_eq!(
         features.multi_agent_v2,
         Some(crate::FeatureToml::Config(crate::MultiAgentV2ConfigToml {
+            boss_mode: None,
             enabled: Some(true),
             max_concurrent_threads_per_session: Some(4),
             min_wait_timeout_ms: Some(2500),

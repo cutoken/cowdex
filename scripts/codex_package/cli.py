@@ -17,6 +17,7 @@ from .targets import default_target
 from .targets import resolve_input_path
 from .zsh import resolve_zsh_bin
 from .version import read_workspace_version
+from .vault import build_vault
 
 
 def parse_args() -> argparse.Namespace:
@@ -192,6 +193,7 @@ def main() -> int:
         bwrap_bin=source_outputs.bwrap_bin,
         codex_command_runner_bin=source_outputs.codex_command_runner_bin,
         codex_windows_sandbox_setup_bin=source_outputs.codex_windows_sandbox_setup_bin,
+        vault_bin=build_vault(spec) if variant.name == "cowdex" else None,
     )
     prepare_package_dir(package_dir, force=args.force)
     build_package_dir(package_dir, version, variant, spec, inputs)

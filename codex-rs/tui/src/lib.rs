@@ -309,19 +309,21 @@ async fn init_state_db_for_app_server_target(
     config: &Config,
     app_server_target: &AppServerTarget,
 ) -> std::io::Result<Option<StateDbHandle>> {
-    #[cfg(not(test))]
-    if matches!(app_server_target, AppServerTarget::Embedded) {
-        cleanup::spawn(config, /*events*/ None);
-    }
     match app_server_target {
-        AppServerTarget::Embedded => state_db::try_init(config).await.map(Some).map_err(|err| {
-            let database_path = codex_state::runtime_db_path_for_corruption_error(&err)
-                .unwrap_or_else(|| config.sqlite_config().state_db_path());
-            std::io::Error::other(LocalStateDbStartupError::new(
-                database_path,
-                format!("{err:#}"),
-            ))
-        }),
+        AppServerTarget::Embedded => {
+            let state = state_db::try_init(config).await.map_err(|err| {
+                let database_path = codex_state::runtime_db_path_for_corruption_error(&err)
+                    .unwrap_or_else(|| config.sqlite_config().state_db_path());
+                std::io::Error::other(LocalStateDbStartupError::new(
+                    database_path,
+                    format!("{err:#}"),
+                ))
+            })?;
+            // Startup migrations must finish before the cleanup process opens the same databases.
+            #[cfg(not(test))]
+            cleanup::spawn(config, /*events*/ None);
+            Ok(Some(state))
+        }
         AppServerTarget::LocalDaemon { .. } | AppServerTarget::Remote { .. } => {
             Ok(state_db::get_state_db(config).await)
         }

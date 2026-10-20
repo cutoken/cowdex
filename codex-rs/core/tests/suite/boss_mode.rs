@@ -16,6 +16,100 @@ use core_test_support::test_codex::test_codex;
 use pretty_assertions::assert_eq;
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn unified_worker_selection_applies_on_startup_and_overrides_resume() -> Result<()> {
+    skip_if_no_network!(Ok(()));
+    let server = start_mock_server().await;
+    let configure = |effort: ReasoningEffort| {
+        move |config: &mut codex_core::config::Config| {
+            config
+                .features
+                .enable(codex_features::Feature::MultiAgentV2)
+                .unwrap();
+            let selected: codex_features::MultiAgentV2ConfigToml = toml::from_str(&format!(
+            "boss_mode = {{ enabled = true, model = \"gpt-5.4\", reasoning_effort = \"{effort}\" }}"
+        )).unwrap();
+            config.multi_agent_v2.boss_mode = selected.boss_mode.map(|boss| BossModeSettings {
+                enabled: boss.enabled,
+                model: boss.model,
+                reasoning_effort: boss.reasoning_effort,
+            });
+            let mut layers = config
+                .config_layer_stack
+                .all_layers_low_to_high()
+                .cloned()
+                .collect::<Vec<_>>();
+            let effort_label = effort.to_string();
+            layers.push(ConfigLayerEntry::new(
+                ConfigLayerSource::SessionFlags,
+                toml::toml! {
+                    [features.multi_agent_v2.boss_mode]
+                    enabled = true
+                    model = "gpt-5.4"
+                    reasoning_effort = effort_label
+                }
+                .into(),
+            ));
+            config.config_layer_stack = ConfigLayerStack::new(
+                layers,
+                config.config_layer_stack.requirements().clone(),
+                config.config_layer_stack.requirements_toml().clone(),
+            )
+            .unwrap();
+        }
+    };
+    let initial = test_codex()
+        .with_config(configure(ReasoningEffort::High))
+        .build_with_auto_env(&server)
+        .await?;
+    let mock = mount_sse_once(
+        &server,
+        sse(vec![
+            ev_assistant_message("ready", "Ready"),
+            ev_completed("initial"),
+        ]),
+    )
+    .await;
+    initial.submit_text_turn("Prepare the work").await?;
+    assert!(
+        mock.single_request()
+            .message_input_texts("developer")
+            .iter()
+            .any(|text| text.contains("model gpt-5.4 with high reasoning effort"))
+    );
+    let mut builder = test_codex().with_config(configure(ReasoningEffort::Medium));
+    let resumed = builder.restart(&server, &initial).await?;
+    assert_eq!(
+        resumed.codex.config_snapshot().await.boss_mode,
+        Some(BossModeSettings {
+            enabled: true,
+            model: "gpt-5.4".to_string(),
+            reasoning_effort: ReasoningEffort::Medium
+        })
+    );
+    let mock = mount_sse_once(
+        &server,
+        sse(vec![
+            ev_assistant_message("continued", "Continuing"),
+            ev_completed("resumed"),
+        ]),
+    )
+    .await;
+    resumed
+        .submit_text_turn("Continue with the selected workers")
+        .await?;
+    let instructions = mock.single_request().message_input_texts("developer");
+    assert!(
+        instructions
+            .iter()
+            .rev()
+            .find(|text| text.contains("<boss_mode>"))
+            .unwrap()
+            .contains("model gpt-5.4 with medium reasoning effort")
+    );
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn boss_mode_live_updates_append_guidance_and_survive_cold_resume() -> Result<()> {
     skip_if_no_network!(Ok(()));
 

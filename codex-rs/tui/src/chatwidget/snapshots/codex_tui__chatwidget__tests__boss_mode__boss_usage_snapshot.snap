@@ -1,7 +1,7 @@
 ---
 source: tui/src/chatwidget/boss_mode_tests.rs
-assertion_line: 142
+assertion_line: 133
 expression: "lines_to_single_string(&cells[0])"
 ---
-• Boss off · default: sol medium
-Use /boss <model> <effort>, /boss on, or /boss off. Models: astra, sol, terra, luna, or a full model ID. Applies to new workers.
+• Boss off · workers follow the lead
+Use /boss <model> [effort], /boss on, or /boss off. Models: astra, sol, luna, or a full model ID. Applies to new workers; /model changes the lead.

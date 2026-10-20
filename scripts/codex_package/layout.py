@@ -89,19 +89,15 @@ def build_package_dir(
         shutil.copy2(
             REPO_ROOT / "scripts/install_cowdex.py", package_dir / "install.py"
         )
-        vault_dir = resources_dir / "cowdex-vault"
-        vault_dir.mkdir()
-        for name in (
-            "start",
-            "requirements.txt",
-            "approvals.py",
-            "broker.py",
-            "web.py",
-            "templates.py",
-            "index.html",
-            "README.md",
-        ):
-            shutil.copy2(REPO_ROOT / "cowdex-vault" / name, vault_dir / name)
+        if inputs.vault_bin is None:
+            raise RuntimeError(
+                "Cowdex packages require the self-contained vault executable"
+            )
+        copy_executable(
+            inputs.vault_bin,
+            bin_dir / f"cowdex-vault{spec.exe_suffix}",
+            is_windows=spec.is_windows,
+        )
 
     metadata = {
         "layoutVersion": LAYOUT_VERSION,
@@ -164,10 +160,10 @@ def validate_package_dir(
         required_files.extend(
             [
                 Path("install.py"),
-                Path("codex-resources/cowdex-vault/start"),
-                Path("codex-resources/cowdex-vault/web.py"),
+                Path("bin") / f"cowdex-vault{spec.exe_suffix}",
             ]
         )
+        executable_files.append(Path("bin") / f"cowdex-vault{spec.exe_suffix}")
 
     if include_zsh:
         zsh_path = Path("codex-resources") / ZSH_RESOURCE_PATH

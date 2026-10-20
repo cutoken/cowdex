@@ -45,6 +45,59 @@ fn read_auth_json(codex_home: &Path) -> Result<Value> {
 }
 
 #[test]
+fn provider_login_saves_and_reloads_keys_without_touching_openai_auth() -> Result<()> {
+    let codex_home = TempDir::new()?;
+    std::fs::write(codex_home.path().join("auth.json"), "existing OpenAI auth")?;
+    for provider in ["zai", "openrouter"] {
+        codex_command(codex_home.path())?
+            .args(["login", "--provider", provider, "--with-api-key"])
+            .write_stdin("fake-provider-key\n")
+            .assert()
+            .success()
+            .stdout("");
+        codex_command(codex_home.path())?
+            .args([
+                "internal-provider-credential",
+                provider,
+                "COWDEX_TEST_MISSING_API_KEY",
+            ])
+            .env_remove("COWDEX_TEST_MISSING_API_KEY")
+            .assert()
+            .success()
+            .stdout("fake-provider-key\n");
+    }
+    assert_eq!(
+        std::fs::read_to_string(codex_home.path().join("auth.json"))?,
+        "existing OpenAI auth"
+    );
+    let saved: Value = serde_json::from_slice(&std::fs::read(
+        codex_home.path().join("provider-keys.json"),
+    )?)?;
+    assert_eq!(
+        saved,
+        json!({"providers":{"zai":{"api_key":"fake-provider-key"},"openrouter":{"api_key":"fake-provider-key"}}})
+    );
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        assert_eq!(
+            std::fs::metadata(codex_home.path().join("provider-keys.json"))?
+                .permissions()
+                .mode()
+                & 0o777,
+            0o600
+        );
+    }
+    codex_command(codex_home.path())?
+        .args(["internal-provider-credential", "zai", "COWDEX_TEST_API_KEY"])
+        .env("COWDEX_TEST_API_KEY", "environment-key")
+        .assert()
+        .success()
+        .stdout("environment-key\n");
+    Ok(())
+}
+
+#[test]
 fn login_with_api_key_reads_stdin_and_writes_auth_json() -> Result<()> {
     let codex_home = TempDir::new()?;
     write_file_auth_config(codex_home.path())?;

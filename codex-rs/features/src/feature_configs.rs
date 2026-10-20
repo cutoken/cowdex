@@ -206,9 +206,21 @@ where
     Ok(feature)
 }
 
+/// Fixed worker defaults in configuration files; wire settings use their own camelCase shape.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct BossModeConfigToml {
+    pub enabled: bool,
+    pub model: String,
+    pub reasoning_effort: codex_protocol::openai_models::ReasoningEffort,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq, Eq, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct MultiAgentV2ConfigToml {
+    /// Fixed worker model and reasoning effort, also configurable with /boss.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub boss_mode: Option<BossModeConfigToml>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub enabled: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -2725,7 +2725,13 @@ fn resolve_multi_agent_v2_config(config_toml: &ConfigToml) -> MultiAgentV2Config
         .unwrap_or(default.non_code_mode_only);
 
     MultiAgentV2Config {
-        boss_mode: None,
+        boss_mode: base
+            .and_then(|config| config.boss_mode.as_ref())
+            .map(|boss| codex_protocol::protocol::BossModeSettings {
+                enabled: boss.enabled,
+                model: boss.model.clone(),
+                reasoning_effort: boss.reasoning_effort.clone(),
+            }),
         max_concurrent_threads_per_session,
         min_wait_timeout_ms,
         max_wait_timeout_ms,

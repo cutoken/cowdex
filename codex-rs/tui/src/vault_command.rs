@@ -88,7 +88,7 @@ pub(crate) fn approval_text(error: &TypedRequestError) -> Option<String> {
         return None;
     }
     Some(format!(
-        "Vault approval required: {code}\nCompare this code in the vault page and approve the requested credentials.\nThen repeat the same /vault attach command, including its options. Access lasts up to one hour."
+        "Vault approval required: {code}\nCompare this code in the vault page and approve the requested credentials.\nThen repeat the same /vault attach command, including its options. Access lasts up to 24 hours."
     ))
 }
 

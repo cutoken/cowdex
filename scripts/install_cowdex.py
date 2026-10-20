@@ -108,7 +108,7 @@ def install(package, package_root, bin_dir):
         f"bin/cowdex{suffix}",
         f"bin/codex-code-mode-host{suffix}",
         f"codex-path/rg{suffix}",
-        "codex-resources/cowdex-vault/start",
+        f"bin/cowdex-vault{suffix}",
     ]
     if platform.system() == "Linux":
         required.append("codex-resources/bwrap")
@@ -147,15 +147,19 @@ def install(package, package_root, bin_dir):
         temporary = Path(output.name)
     temporary.chmod(0o755)
     temporary.replace(launcher)
-    if platform.system() == "Linux":
-        vault = bin_dir / "cowdex-vault"
-        with tempfile.NamedTemporaryFile(mode="w", dir=bin_dir, delete=False) as output:
-            output.write(
-                f'#!/bin/sh\nexec {shlex.quote(str(installed / "codex-resources/cowdex-vault/start"))} "$@"\n'
-            )
-            temporary = Path(output.name)
-        temporary.chmod(0o755)
-        temporary.replace(vault)
+    vault = bin_dir / ("cowdex-vault.cmd" if os.name == "nt" else "cowdex-vault")
+    contents = (
+        f'@echo off\r\n"{installed / "bin/cowdex-vault.exe"}" %*\r\n'
+        if os.name == "nt"
+        else f'#!/bin/sh\nexec {shlex.quote(str(installed / "bin/cowdex-vault"))} "$@"\n'
+    )
+    with tempfile.NamedTemporaryFile(
+        mode="w", newline="", dir=bin_dir, delete=False
+    ) as output:
+        output.write(contents)
+        temporary = Path(output.name)
+    temporary.chmod(0o755)
+    temporary.replace(vault)
     print(f"Installed Cowdex {version} at {installed}\nCommand: {launcher}")
     return installed
 

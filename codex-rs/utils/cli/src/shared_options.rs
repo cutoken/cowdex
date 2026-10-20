@@ -9,11 +9,12 @@ use std::path::PathBuf;
 
 fn parse_ultra_effort(value: &str) -> Result<ReasoningEffort, String> {
     match value {
+        "low" => Ok(ReasoningEffort::Low),
         "medium" => Ok(ReasoningEffort::Medium),
         "high" => Ok(ReasoningEffort::High),
         "xhigh" => Ok(ReasoningEffort::XHigh),
         "max" => Ok(ReasoningEffort::Max),
-        _ => Err("expected one of: medium, high, xhigh, max".to_string()),
+        _ => Err("expected one of: low, medium, high, xhigh, max".to_string()),
     }
 }
 
@@ -33,17 +34,27 @@ pub struct SharedCliOptions {
     #[arg(long, short = 'm')]
     pub model: Option<String>,
 
-    /// Start in Ultra mode, using GPT-6 Astra unless an external provider is selected.
+    /// Enable agent teams with the selected model (defaults to GPT-6 Astra).
     #[arg(
-        long = "astra-ultra",
+        long = "ultra",
+        alias = "astra-ultra",
         default_value_t = false,
-        conflicts_with_all = ["model", "astra_ultra_low", "astra_ultra_miser", "astra_boss", "astra_boss_low", "astra_boss_miser", "oss"]
+        conflicts_with_all = ["astra_ultra_low", "astra_ultra_miser", "astra_boss", "astra_boss_low", "astra_boss_miser", "oss"]
     )]
     pub astra_ultra: bool,
+
+    /// Enable agent teams with fixed worker defaults. Change these live with /boss.
+    #[arg(long, value_name = "MODEL", conflicts_with_all = ["zai", "openrouter", "oss", "astra_ultra_low", "astra_ultra_miser", "astra_boss", "astra_boss_low", "astra_boss_miser"])]
+    pub boss: Option<String>,
+
+    /// Worker reasoning effort in Boss mode (defaults to medium).
+    #[arg(long, value_name = "EFFORT", requires = "boss", value_parser = parse_ultra_effort)]
+    pub worker_effort: Option<ReasoningEffort>,
 
     /// Start Astra in Ultra mode and force spawned workers to Astra at low effort.
     #[arg(
         long = "astra-ultra-low",
+        hide = true,
         default_value_t = false,
         conflicts_with_all = ["model", "astra_ultra", "astra_ultra_miser", "astra_boss", "astra_boss_low", "astra_boss_miser", "zai", "openrouter", "oss"]
     )]
@@ -52,6 +63,7 @@ pub struct SharedCliOptions {
     /// Start Astra at low effort and force spawned workers to Astra at low effort.
     #[arg(
         long = "astra-ultra-miser",
+        hide = true,
         default_value_t = false,
         conflicts_with_all = ["model", "astra_ultra", "astra_ultra_low", "astra_boss", "astra_boss_low", "astra_boss_miser", "ultra_effort", "zai", "openrouter", "oss"]
     )]
@@ -60,6 +72,7 @@ pub struct SharedCliOptions {
     /// Start Astra in Ultra mode and force spawned workers to GPT-5.6 Sol.
     #[arg(
         long = "astra-boss",
+        hide = true,
         default_value_t = false,
         conflicts_with_all = ["model", "astra_ultra", "astra_ultra_low", "astra_ultra_miser", "astra_boss_low", "astra_boss_miser", "zai", "openrouter", "oss"]
     )]
@@ -68,6 +81,7 @@ pub struct SharedCliOptions {
     /// Start Astra in Ultra mode and force spawned workers to GPT-5.6 Sol at medium effort.
     #[arg(
         long = "astra-boss-low",
+        hide = true,
         default_value_t = false,
         conflicts_with_all = ["model", "astra_ultra", "astra_ultra_low", "astra_ultra_miser", "astra_boss", "astra_boss_miser", "zai", "openrouter", "oss"]
     )]
@@ -76,6 +90,7 @@ pub struct SharedCliOptions {
     /// Start Astra at low effort and force spawned workers to GPT-5.6 Sol at medium effort.
     #[arg(
         long = "astra-boss-miser",
+        hide = true,
         default_value_t = false,
         conflicts_with_all = ["model", "astra_ultra", "astra_ultra_low", "astra_ultra_miser", "astra_boss", "astra_boss_low", "ultra_effort", "zai", "openrouter", "oss"]
     )]
@@ -167,6 +182,10 @@ impl SharedCliOptions {
     pub fn take_config_overrides(&mut self, overrides: &mut CliConfigOverrides) {
         let zai = self.zai;
         let openrouter = self.openrouter;
+        if zai || openrouter {
+            self.boss = None;
+            self.worker_effort = None;
+        }
         if zai {
             self.model = Some("glm-5.3".to_string());
             add_external_provider_overrides(
@@ -197,8 +216,9 @@ impl SharedCliOptions {
             || self.astra_boss
             || self.astra_boss_low
             || self.astra_boss_miser
+            || self.boss.is_some()
         {
-            if !zai && !openrouter {
+            if !zai && !openrouter && self.model.is_none() {
                 self.model = Some("gpt-6-astra".to_string());
             }
             if self.astra_ultra_miser || self.astra_boss_miser {
@@ -228,12 +248,28 @@ impl SharedCliOptions {
                     .raw_overrides
                     .push(format!("features.multi_agent_v2.{setting}={enabled}"));
             }
+            overrides
+                .raw_overrides
+                .push("features.multi_agent_v2.enabled=true".to_string());
             self.astra_ultra = false;
             self.astra_ultra_low = false;
             self.astra_ultra_miser = false;
             self.astra_boss = false;
             self.astra_boss_low = false;
             self.astra_boss_miser = false;
+        }
+        if let Some(model) = self.boss.take() {
+            let model = match model.as_str() {
+                "astra" => "gpt-6-astra",
+                "sol" => "gpt-6.1-sol",
+                "luna" => "gpt-6-luna",
+                model => model,
+            };
+            let model = toml::Value::String(model.to_string());
+            let effort = self.worker_effort.take().unwrap_or(ReasoningEffort::Medium);
+            overrides.raw_overrides.push(format!(
+                "features.multi_agent_v2.boss_mode={{enabled=true,model={model},reasoning_effort=\"{effort}\"}}"
+            ));
         }
         if self.ultra_effort.is_some()
             && !overrides.raw_overrides.iter().any(|override_| {
@@ -286,6 +322,8 @@ impl SharedCliOptions {
             astra_boss,
             astra_boss_low,
             astra_boss_miser,
+            boss,
+            worker_effort,
             ultra_effort,
             max_context,
             compact_with_lower,
@@ -310,6 +348,8 @@ impl SharedCliOptions {
             astra_boss: root_astra_boss,
             astra_boss_low: root_astra_boss_low,
             astra_boss_miser: root_astra_boss_miser,
+            boss: root_boss,
+            worker_effort: root_worker_effort,
             ultra_effort: root_ultra_effort,
             max_context: root_max_context,
             compact_with_lower: root_compact_with_lower,
@@ -326,6 +366,12 @@ impl SharedCliOptions {
             add_dir: root_add_dir,
         } = root;
 
+        if boss.is_none() && !*zai && !*openrouter {
+            boss.clone_from(root_boss);
+        }
+        if worker_effort.is_none() {
+            worker_effort.clone_from(root_worker_effort);
+        }
         if model.is_none() {
             model.clone_from(root_model);
         }
@@ -403,6 +449,8 @@ impl SharedCliOptions {
             astra_boss,
             astra_boss_low,
             astra_boss_miser,
+            boss,
+            worker_effort,
             ultra_effort,
             max_context,
             compact_with_lower,
@@ -456,6 +504,12 @@ impl SharedCliOptions {
             self.astra_boss_miser = false;
             self.zai = zai;
             self.openrouter = openrouter;
+        }
+        if boss.is_some() {
+            self.boss = boss;
+        }
+        if worker_effort.is_some() {
+            self.worker_effort = worker_effort;
         }
         if let Some(ultra_effort) = ultra_effort {
             self.ultra_effort = Some(ultra_effort);
@@ -511,7 +565,7 @@ fn add_external_provider_overrides(
     let provider_name = toml::Value::String(provider_name.to_string());
     let base_url = toml::Value::String(base_url.to_string());
     let credential_args = toml::Value::Array(
-        ["internal-cando-credential", provider_id, env_key]
+        ["internal-provider-credential", provider_id, env_key]
             .map(|value| toml::Value::String(value.to_string()))
             .to_vec(),
     );

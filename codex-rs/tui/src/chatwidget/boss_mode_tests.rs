@@ -7,7 +7,7 @@ use pretty_assertions::assert_eq;
 async fn boss_commands_validate_and_preserve_selection() {
     let (chat, _rx, _ops) = make_chatwidget_manual(/*model_override*/ None).await;
     let mut model = chat.model_catalog.try_list_models().unwrap()[0].clone();
-    model.model = "gpt-5.6-sol".to_string();
+    model.model = "gpt-6.1-sol".to_string();
     model.supported_reasoning_efforts = [
         ReasoningEffortConfig::Medium,
         ReasoningEffortConfig::High,
@@ -21,24 +21,19 @@ async fn boss_commands_validate_and_preserve_selection() {
         },
     )
     .collect();
-    let models: Vec<_> = [
-        "gpt-6-astra",
-        "gpt-5.6-sol",
-        "gpt-5.6-terra",
-        "gpt-5.6-luna",
-    ]
-    .into_iter()
-    .map(|name| ModelPreset {
-        model: name.to_string(),
-        ..model.clone()
-    })
-    .collect();
+    let models: Vec<_> = ["gpt-6-astra", "gpt-6.1-sol", "gpt-5.6-terra", "gpt-6-luna"]
+        .into_iter()
+        .map(|name| ModelPreset {
+            model: name.to_string(),
+            ..model.clone()
+        })
+        .collect();
     let enabled = BossModeSettings {
         enabled: true,
-        model: "gpt-5.6-sol".to_string(),
+        model: "gpt-6.1-sol".to_string(),
         reasoning_effort: ReasoningEffortConfig::Medium,
     };
-    for command in ["on", "sol medium", "gpt-5.6-sol medium"] {
+    for command in ["on", "sol", "sol medium", "gpt-6.1-sol medium"] {
         assert_eq!(
             parse_boss_command(command, /*current*/ None, &models),
             Ok(Some(enabled.clone()))
@@ -57,8 +52,8 @@ async fn boss_commands_validate_and_preserve_selection() {
         Ok(Some(enabled))
     );
     for (command, model, effort) in [
-        ("sol high", "gpt-5.6-sol", ReasoningEffortConfig::High),
-        ("luna max", "gpt-5.6-luna", ReasoningEffortConfig::Max),
+        ("sol high", "gpt-6.1-sol", ReasoningEffortConfig::High),
+        ("luna max", "gpt-6-luna", ReasoningEffortConfig::Max),
         ("astra medium", "gpt-6-astra", ReasoningEffortConfig::Medium),
         ("terra high", "gpt-5.6-terra", ReasoningEffortConfig::High),
     ] {
@@ -71,13 +66,7 @@ async fn boss_commands_validate_and_preserve_selection() {
             }))
         );
     }
-    for command in [
-        "sol low",
-        "unknown medium",
-        "sol",
-        "on extra",
-        "sol medium extra",
-    ] {
+    for command in ["sol low", "unknown medium", "on extra", "sol medium extra"] {
         assert!(parse_boss_command(command, /*current*/ None, &models).is_err());
     }
 }
@@ -111,7 +100,7 @@ async fn boss_status_replaces_ultra_label() {
     chat.set_reasoning_effort(Some(ReasoningEffortConfig::High));
     chat.config.multi_agent_v2.boss_mode = Some(BossModeSettings {
         enabled: true,
-        model: "gpt-5.6-luna".to_string(),
+        model: "gpt-6-luna".to_string(),
         reasoning_effort: ReasoningEffortConfig::Max,
     });
     insta::assert_snapshot!(chat.status_line_value_for_item(StatusLineItem::Reasoning).unwrap(), @"Boss luna max");

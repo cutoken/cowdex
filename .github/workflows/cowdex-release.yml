@@ -30,11 +30,14 @@ jobs:
         run: |
           version=$(python -c 'import tomllib; print(tomllib.load(open("codex-rs/Cargo.toml", "rb"))["workspace"]["package"]["version"])')
           if [ "$GITHUB_EVENT_NAME" = push ]; then
-            test "$GITHUB_REF_NAME" = "cowdex-v$version"
+            case "$GITHUB_REF_NAME" in
+              "cowdex-v$version"|"cowdex-v$version"-*) ;;
+              *) echo 'Release tag must match the upstream workspace version' >&2; exit 1 ;;
+            esac
             if gh release view "$GITHUB_REF_NAME" --json isDraft > /tmp/cowdex-release.json; then
               python -c 'import json; assert json.load(open("/tmp/cowdex-release.json"))["isDraft"], "Release is already published"'
             else
-              gh release create "$GITHUB_REF_NAME" --draft --target "$GITHUB_SHA" --title "Cowdex $version" --notes "Standalone Cowdex packages, including matching support binaries."
+              gh release create "$GITHUB_REF_NAME" --draft --target "$GITHUB_SHA" --title "Cowdex ${GITHUB_REF_NAME#cowdex-v}" --notes "Standalone Cowdex packages, including matching support binaries and the native credential vault."
             fi
             cp scripts/install_cowdex.py /tmp/install.py
             gh release upload "$GITHUB_REF_NAME" /tmp/install.py --clobber
@@ -82,6 +85,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.95.0
         with:
           targets: ${{ matrix.target }}
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.27.3"
+          cache: false
+      - name: Test native vault
+        working-directory: cowdex-vault
+        run: go test ./...
       - if: runner.os == 'Linux'
         uses: mlugg/setup-zig@v2
         with:
