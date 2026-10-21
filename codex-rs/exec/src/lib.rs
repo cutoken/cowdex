@@ -267,6 +267,7 @@ pub async fn run_main(cli: Cli, arg0_paths: Arg0DispatchPaths) -> anyhow::Result
     let SharedCliOptions {
         images,
         model: model_cli_arg,
+        effort: _,
         astra_ultra: _,
         boss: _,
         worker_effort: _,

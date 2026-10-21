@@ -107,6 +107,7 @@ use codex_terminal_detection::TerminalName;
     version,
     // If a sub‑command is given, ignore requirements of the default args.
     subcommand_negates_reqs = true,
+    subcommand_precedence_over_arg = true,
     bin_name = "cowdex",
     override_usage = "cowdex [OPTIONS] [PROMPT]\n       cowdex [OPTIONS] <COMMAND> [ARGS]"
 )]
@@ -2679,6 +2680,10 @@ fn print_completion(cmd: CompletionCommand) {
     let name = "cowdex";
     generate(cmd.shell, &mut app, name, &mut std::io::stdout());
 }
+
+#[cfg(test)]
+#[path = "worker_cli_tests.rs"]
+mod worker_cli_tests;
 
 #[cfg(test)]
 mod tests {

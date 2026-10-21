@@ -12,6 +12,116 @@ struct TestCli {
 }
 
 #[test]
+fn worker_syntax_defaults_and_effort_are_independent_of_the_lead() {
+    for (args, lead, lead_effort, worker, worker_effort) in [
+        (
+            vec!["cowdex", "--worker"],
+            "gpt-6-astra",
+            ReasoningEffort::Medium,
+            "gpt-6.1-sol",
+            "medium",
+        ),
+        (
+            vec!["cowdex", "--worker", "sol"],
+            "gpt-6-astra",
+            ReasoningEffort::Medium,
+            "gpt-6.1-sol",
+            "medium",
+        ),
+        (
+            vec!["cowdex", "--worker", ":high"],
+            "gpt-6-astra",
+            ReasoningEffort::Medium,
+            "gpt-6.1-sol",
+            "high",
+        ),
+        (
+            vec![
+                "cowdex",
+                "--worker",
+                "luna:low",
+                "--model",
+                "gpt-6.1-sol",
+                "--effort",
+                "high",
+            ],
+            "gpt-6.1-sol",
+            ReasoningEffort::High,
+            "gpt-6-luna",
+            "low",
+        ),
+    ] {
+        let mut cli = TestCli::parse_from(args);
+        cli.shared.take_config_overrides(&mut cli.overrides);
+        let mut expected = expected_preset_overrides(/*enabled_setting*/ None);
+        expected.push(format!("features.multi_agent_v2.boss_mode={{enabled=true,model=\"{worker}\",reasoning_effort=\"{worker_effort}\"}}"));
+        assert_eq!(
+            (
+                cli.shared.model.as_deref(),
+                cli.shared.ultra_effort,
+                cli.overrides.raw_overrides
+            ),
+            (Some(lead), Some(lead_effort), expected)
+        );
+    }
+    for value in ["sol:extreme", "sol:high:low", ":"] {
+        assert!(TestCli::try_parse_from(["cowdex", "--worker", value]).is_err());
+    }
+}
+
+#[test]
+fn effort_controls_solo_ultra_and_external_provider_requests() {
+    for effort in ["low", "medium", "high", "xhigh", "max"] {
+        let mut solo = TestCli::parse_from(["cowdex", "--effort", effort]);
+        solo.shared.take_config_overrides(&mut solo.overrides);
+        assert_eq!(
+            (
+                solo.shared.model,
+                solo.shared.ultra_effort,
+                solo.overrides.raw_overrides
+            ),
+            (
+                None,
+                None,
+                vec![format!("model_reasoning_effort=\"{effort}\"")]
+            )
+        );
+        for mode in ["--ultra", "--zai", "--openrouter"] {
+            let mut cli = TestCli::parse_from(["cowdex", mode, "--effort", effort]);
+            cli.shared.take_config_overrides(&mut cli.overrides);
+            if mode == "--ultra" {
+                assert_eq!(
+                    cli.shared.ultra_effort,
+                    Some(parse_ultra_effort(effort).unwrap())
+                );
+            } else {
+                assert_eq!(
+                    cli.overrides.raw_overrides.last(),
+                    Some(&format!("model_reasoning_effort=\"{effort}\""))
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn worker_and_main_effort_survive_exec_inheritance_and_resume_overrides() {
+    let root = TestCli::parse_from(["cowdex", "--worker", "sol:high", "--effort", "high"]);
+    let mut exec = SharedCliOptions::default();
+    exec.inherit_exec_root_options(&root.shared);
+    let child = TestCli::parse_from(["cowdex", "--worker", "luna:low", "--effort", "medium"]);
+    exec.apply_subcommand_overrides(child.shared);
+    let mut overrides = CliConfigOverrides::default();
+    exec.take_config_overrides(&mut overrides);
+    let mut expected = expected_preset_overrides(/*enabled_setting*/ None);
+    expected.push("features.multi_agent_v2.boss_mode={enabled=true,model=\"gpt-6-luna\",reasoning_effort=\"low\"}".to_string());
+    assert_eq!(
+        (exec.ultra_effort, overrides.raw_overrides),
+        (Some(ReasoningEffort::Medium), expected)
+    );
+}
+
+#[test]
 fn unified_team_options_preserve_the_lead_and_set_worker_defaults() {
     let mut cli = TestCli::parse_from([
         "cowdex",

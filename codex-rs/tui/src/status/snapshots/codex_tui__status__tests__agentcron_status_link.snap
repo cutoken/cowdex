@@ -1,0 +1,5 @@
+---
+source: tui/src/status/tests.rs
+expression: "render_lines(&link.display_lines(80)).join(\"\\n\")"
+---
+Project management: agentcron.ai

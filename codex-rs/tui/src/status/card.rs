@@ -252,10 +252,11 @@ pub(crate) fn new_status_output_with_rate_limits_handle(
         refreshing_rate_limits,
     );
 
-    (
-        CompositeHistoryCell::new(vec![Box::new(command), Box::new(card)]),
-        handle,
-    )
+    let mut parts: Vec<Box<dyn HistoryCell>> = vec![Box::new(command), Box::new(card)];
+    if let Some(link) = super::agentcron::new_link(config) {
+        parts.push(Box::new(link));
+    }
+    (CompositeHistoryCell::new(parts), handle)
 }
 
 impl StatusHistoryCell {

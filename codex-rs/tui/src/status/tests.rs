@@ -147,6 +147,48 @@ async fn test_config(temp_home: &TempDir) -> Config {
     config
 }
 
+#[tokio::test]
+async fn agentcron_link_is_clickable_and_hidden_for_existing_integrations() {
+    let temp_home = TempDir::new().expect("temp home");
+    let config = test_config(&temp_home).await;
+    let link = super::agentcron::new_link(&config).expect("show AgentCron link");
+    let lines = link.display_hyperlink_lines(80);
+    insta::assert_snapshot!(
+        "agentcron_status_link",
+        render_lines(&link.display_lines(80)).join("\n")
+    );
+    assert_eq!(lines[0].hyperlinks[0].destination, "https://agentcron.ai");
+    let narrow = link.display_hyperlink_lines(24);
+    assert!(narrow.iter().all(|line| line.width() <= 24));
+    assert_eq!(
+        narrow
+            .iter()
+            .flat_map(|line| &line.hyperlinks)
+            .map(|link| link.destination.as_str())
+            .collect::<Vec<_>>(),
+        vec!["https://agentcron.ai"]
+    );
+    for server in [
+        "[mcp_servers.agentcron]\ncommand = 'agentcron-mcp'",
+        "[mcp_servers.projects]\nurl = 'https://agentcron.ai/api/mcp?key=fake-test-key'",
+        "[mcp_servers.projects]\nurl = 'https://api.agentcron.ai/api/mcp'",
+        "[mcp_servers.agentcron]\ncommand = 'agentcron-mcp'\nenabled = false",
+        "[mcp_servers.projects]\ncommand = 'npx'\nargs = ['agentcron-mcp']",
+    ] {
+        let config = ConfigBuilder::default()
+            .codex_home(temp_home.path().to_path_buf())
+            .loader_overrides(LoaderOverrides::without_managed_config_for_tests())
+            .cli_overrides(vec![(
+                "mcp_servers".to_string(),
+                toml::from_str::<toml::Value>(server).unwrap()["mcp_servers"].clone(),
+            )])
+            .build()
+            .await
+            .expect("load MCP config");
+        assert!(super::agentcron::new_link(&config).is_none());
+    }
+}
+
 fn set_workspace_cwd(config: &mut Config, cwd: AbsolutePathBuf) {
     config.cwd = cwd.clone();
     config.workspace_roots = vec![cwd];
@@ -824,7 +866,10 @@ async fn status_model_provider_uses_bedrock_runtime_base_url_and_gates_usage_lin
         .collect();
     assert_eq!(
         wide_destinations,
-        vec!["https://chatgpt.com/codex/settings/usage"]
+        vec![
+            "https://chatgpt.com/codex/settings/usage",
+            "https://agentcron.ai"
+        ]
     );
 
     let narrow_destinations: Vec<String> = composite
@@ -833,7 +878,7 @@ async fn status_model_provider_uses_bedrock_runtime_base_url_and_gates_usage_lin
         .flat_map(|line| line.hyperlinks.into_iter())
         .map(|link| link.destination)
         .collect();
-    assert_eq!(narrow_destinations, Vec::<String>::new());
+    assert_eq!(narrow_destinations, vec!["https://agentcron.ai"]);
 }
 
 #[tokio::test]

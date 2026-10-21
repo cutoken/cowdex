@@ -18,6 +18,17 @@ fn parse_ultra_effort(value: &str) -> Result<ReasoningEffort, String> {
     }
 }
 
+fn parse_worker(value: &str) -> Result<String, String> {
+    let (model, effort) = value.split_once(':').unwrap_or((value, ""));
+    if model.is_empty() && effort.is_empty() && !value.is_empty() {
+        return Err("expected MODEL[:EFFORT], MODEL, or :EFFORT".to_string());
+    }
+    if !effort.is_empty() {
+        parse_ultra_effort(effort)?;
+    }
+    Ok(value.to_string())
+}
+
 #[derive(Args, Clone, Debug, Default)]
 pub struct SharedCliOptions {
     /// Optional image(s) to attach to the initial prompt.
@@ -34,6 +45,10 @@ pub struct SharedCliOptions {
     #[arg(long, short = 'm')]
     pub model: Option<String>,
 
+    /// Main agent reasoning effort: low, medium, high, xhigh, or max.
+    #[arg(long, value_name = "LEVEL", value_parser = parse_ultra_effort)]
+    pub effort: Option<ReasoningEffort>,
+
     /// Enable agent teams with the selected model (defaults to GPT-6 Astra).
     #[arg(
         long = "ultra",
@@ -43,12 +58,12 @@ pub struct SharedCliOptions {
     )]
     pub astra_ultra: bool,
 
-    /// Enable agent teams with fixed worker defaults. Change these live with /boss.
-    #[arg(long, value_name = "MODEL", conflicts_with_all = ["zai", "openrouter", "oss", "astra_ultra_low", "astra_ultra_miser", "astra_boss", "astra_boss_low", "astra_boss_miser"])]
+    /// Enable Boss mode with fixed workers (defaults to sol:medium). Change live with /boss.
+    #[arg(long = "worker", alias = "boss", value_name = "MODEL[:EFFORT]", num_args = 0..=1, default_missing_value = "sol", value_parser = parse_worker, conflicts_with_all = ["zai", "openrouter", "oss", "astra_ultra_low", "astra_ultra_miser", "astra_boss", "astra_boss_low", "astra_boss_miser"])]
     pub boss: Option<String>,
 
     /// Worker reasoning effort in Boss mode (defaults to medium).
-    #[arg(long, value_name = "EFFORT", requires = "boss", value_parser = parse_ultra_effort)]
+    #[arg(long, hide = true, value_name = "EFFORT", requires = "boss", value_parser = parse_ultra_effort)]
     pub worker_effort: Option<ReasoningEffort>,
 
     /// Start Astra in Ultra mode and force spawned workers to Astra at low effort.
@@ -99,6 +114,7 @@ pub struct SharedCliOptions {
     /// Reasoning effort sent to the API when Ultra mode is selected.
     #[arg(
         long = "ultra-effort",
+        hide = true,
         value_name = "EFFORT",
         value_parser = parse_ultra_effort
     )]
@@ -259,14 +275,20 @@ impl SharedCliOptions {
             self.astra_boss_miser = false;
         }
         if let Some(model) = self.boss.take() {
-            let model = match model.as_str() {
+            let (model, effort) = model.split_once(':').unwrap_or((&model, ""));
+            let model = if model.is_empty() { "sol" } else { model };
+            let model = match model {
                 "astra" => "gpt-6-astra",
                 "sol" => "gpt-6.1-sol",
                 "luna" => "gpt-6-luna",
                 model => model,
             };
             let model = toml::Value::String(model.to_string());
-            let effort = self.worker_effort.take().unwrap_or(ReasoningEffort::Medium);
+            let effort = if effort.is_empty() {
+                self.worker_effort.take().unwrap_or(ReasoningEffort::Medium)
+            } else {
+                parse_ultra_effort(effort).expect("worker effort validated by clap")
+            };
             overrides.raw_overrides.push(format!(
                 "features.multi_agent_v2.boss_mode={{enabled=true,model={model},reasoning_effort=\"{effort}\"}}"
             ));
@@ -281,6 +303,15 @@ impl SharedCliOptions {
             overrides
                 .raw_overrides
                 .push(r#"model_reasoning_effort="ultra""#.to_string());
+        }
+        if let Some(effort) = self.effort.take() {
+            if self.ultra_effort.is_some() {
+                self.ultra_effort = Some(effort);
+            } else {
+                overrides
+                    .raw_overrides
+                    .push(format!("model_reasoning_effort=\"{effort}\""));
+            }
         }
         if self.auto_review {
             overrides
@@ -316,6 +347,7 @@ impl SharedCliOptions {
         let Self {
             images,
             model,
+            effort,
             astra_ultra,
             astra_ultra_low,
             astra_ultra_miser,
@@ -342,6 +374,7 @@ impl SharedCliOptions {
         let Self {
             images: root_images,
             model: root_model,
+            effort: root_effort,
             astra_ultra: root_astra_ultra,
             astra_ultra_low: root_astra_ultra_low,
             astra_ultra_miser: root_astra_ultra_miser,
@@ -371,6 +404,9 @@ impl SharedCliOptions {
         }
         if worker_effort.is_none() {
             worker_effort.clone_from(root_worker_effort);
+        }
+        if effort.is_none() {
+            effort.clone_from(root_effort);
         }
         if model.is_none() {
             model.clone_from(root_model);
@@ -443,6 +479,7 @@ impl SharedCliOptions {
         let Self {
             images,
             model,
+            effort,
             astra_ultra,
             astra_ultra_low,
             astra_ultra_miser,
@@ -507,6 +544,9 @@ impl SharedCliOptions {
         }
         if boss.is_some() {
             self.boss = boss;
+        }
+        if effort.is_some() {
+            self.effort = effort;
         }
         if worker_effort.is_some() {
             self.worker_effort = worker_effort;
