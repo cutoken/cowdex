@@ -1,4 +1,4 @@
-# Cowdex
+# 🐮 Cowdex
 
 Cowdex is a Codex fork focused on saving tokens and a slower, deliberate release cycle to reduce exposure to upstream regressions. It adds worker waits and completion events instead of constant status checking, Boss mode for choosing worker models and effort, Ultra with all model-supported effort levels (low through max), guardrails against overengineering and redundant work, and DeepSeek via OpenRouter plus Z.ai Coding Plan support.
 

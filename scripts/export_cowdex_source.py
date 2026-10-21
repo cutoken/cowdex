@@ -85,8 +85,8 @@ def main():
             if path == Path("AGENTS.md"):
                 target.write_text(
                     target.read_text().replace(
-                        "Build and test on the bare-metal build host, then install the built artifact locally.",
-                        "Build and test on the supported target platform, then install the built artifact locally.",
+                        "on the bare-metal build host",
+                        "on the supported target platform",
                     )
                 )
     print(f"Exported {len(selected)} source files to {destination}")

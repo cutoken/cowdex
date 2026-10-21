@@ -1,6 +1,6 @@
 # Cowdex releases
 
-Use the latest stable upstream Codex release version for Cowdex's workspace/package version and backend client identification; do not ship `0.0.0`. Build and test on the supported target platform, then install the built artifact locally.
+Use the latest stable upstream Codex release version for Cowdex's workspace/package version and backend client identification; do not ship `0.0.0`. For requested releases, build and test on the supported target platform, then install the built artifact locally. Do not compile, install, or create release tags for routine edits; wait for an explicit release or build/install request.
 
 Install Cowdex in its own package directory, separate from regular Codex, and bundle `codex-code-mode-host` built from the same checkout. Never reuse regular Codex's code-mode host: its IPC schema can differ even when the release version matches.
 
