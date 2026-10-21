@@ -25,6 +25,8 @@ cowdex --ultra --model gpt-6.1-sol --boss sol --worker-effort medium
 cowdex resume --zai
 ```
 
+Live token counters show total tokens (`T`), cached and uncached input (`CI`/`NI`), reasoning output (`OUT_R`), and total output (`OUT_T`).
+
 Lower logging overhead and bounded history caches keep storage lean. `/cleanup` shrinks session files while preserving resume support, backs up originals, removes stale subagents, and protects running sessions.
 
 Use `cowdex keepwarm` to keep additional accounts warm. It signs in separately and runs a research task without replacing your current login.
