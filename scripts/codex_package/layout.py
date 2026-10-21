@@ -1,6 +1,7 @@
 """Canonical Codex package directory layout."""
 
 import json
+import re
 import shutil
 import stat
 from pathlib import Path
@@ -38,7 +39,16 @@ def build_package_dir(
     variant: PackageVariant,
     spec: TargetSpec,
     inputs: PackageInputs,
+    *,
+    release_version: str | None = None,
 ) -> None:
+    if release_version is not None and (
+        variant.name != "cowdex"
+        or not re.fullmatch(re.escape(version) + r"(?:-r[1-9][0-9]*)?", release_version)
+    ):
+        raise ValueError(
+            "Cowdex release version must match the workspace version, optionally with -rN"
+        )
     bin_dir = package_dir / "bin"
     resources_dir = package_dir / "codex-resources"
     path_dir = package_dir / "codex-path"
@@ -108,6 +118,8 @@ def build_package_dir(
         "resourcesDir": "codex-resources",
         "pathDir": "codex-path",
     }
+    if variant.name == "cowdex":
+        metadata["releaseVersion"] = release_version or version
     write_json(package_dir / "codex-package.json", metadata)
 
 

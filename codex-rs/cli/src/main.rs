@@ -145,6 +145,9 @@ enum Subcommand {
     /// Temporarily sign in with another account and research GOOGL and GLD.
     Keepwarm(keepwarm::KeepwarmCommand),
 
+    /// Install the latest Cowdex release, including its matching helpers.
+    Update,
+
     /// Reclaim local history, expired subagent sessions, and logs.
     Cleanup(cleanup::CleanupCommand),
 
@@ -801,42 +804,17 @@ fn handle_app_exit(exit_info: AppExitInfo) -> anyhow::Result<()> {
 fn run_update_action(action: UpdateAction) -> anyhow::Result<()> {
     println!();
     let cmd_str = action.command_str();
-    println!("Updating Codex via `{cmd_str}`...");
+    println!("Updating Cowdex from cutoken/cowdex...");
 
-    let status = {
-        #[cfg(windows)]
-        {
-            if action == UpdateAction::StandaloneWindows {
-                let (cmd, args) = action.command_args();
-                // Run the standalone PowerShell installer with PowerShell
-                // itself. Routing this through `cmd.exe /C` would parse
-                // PowerShell metacharacters like `|` before PowerShell sees
-                // the installer command.
-                std::process::Command::new(cmd).args(args).status()?
-            } else {
-                // On Windows, run via cmd.exe so .CMD/.BAT are correctly resolved (PATHEXT semantics).
-                std::process::Command::new("cmd")
-                    .args(["/C", &cmd_str])
-                    .status()?
-            }
-        }
-        #[cfg(not(windows))]
-        {
-            let (cmd, args) = action.command_args();
-            let command_path = crate::wsl_paths::normalize_for_wsl(cmd);
-            let normalized_args: Vec<String> = args
-                .iter()
-                .map(crate::wsl_paths::normalize_for_wsl)
-                .collect();
-            std::process::Command::new(&command_path)
-                .args(&normalized_args)
-                .status()?
-        }
-    };
+    let (command, args) = action.command_args();
+    let status = std::process::Command::new(command)
+        .args(args)
+        .status()
+        .map_err(|err| anyhow::anyhow!("Cowdex updates require Python 3.10+ ({command}): {err}"))?;
     if !status.success() {
         anyhow::bail!("`{cmd_str}` failed with status {status}");
     }
-    println!("\n🎉 Update ran successfully! Please restart Codex.");
+    println!("\nCowdex updated. Restart Cowdex to use the new release.");
     Ok(())
 }
 
@@ -1433,6 +1411,11 @@ async fn cli_main(
                         run_login_with_chatgpt(login_cli.config_overrides).await;
                     }
                 }
+            }
+        }
+        Some(Subcommand::Update) => {
+            if let Some(action) = codex_tui::get_update_action() {
+                run_update_action(action)?;
             }
         }
         Some(Subcommand::Cleanup(command)) => {
@@ -2311,6 +2294,7 @@ fn unsupported_subcommand_name_for_strict_config(
         Some(Subcommand::Logout(_)) => Some("logout"),
         Some(Subcommand::Keepwarm(_)) => Some("keepwarm"),
         Some(Subcommand::Cleanup(_)) => Some("cleanup"),
+        Some(Subcommand::Update) => Some("update"),
         Some(Subcommand::Completion(_)) => Some("completion"),
         Some(Subcommand::Cloud(_)) => Some("cloud"),
         Some(Subcommand::Sandbox(_)) => Some("sandbox"),

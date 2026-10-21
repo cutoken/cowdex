@@ -201,11 +201,11 @@ mod tui;
 mod ui_consts;
 pub(crate) mod update_action;
 pub use update_action::UpdateAction;
-#[cfg(not(debug_assertions))]
 pub use update_action::get_update_action;
 mod update_prompt;
-#[cfg(any(not(debug_assertions), test))]
 mod update_versions;
+pub use update_versions::current_release_version;
+pub use update_versions::is_newer as is_newer_release;
 mod updates;
 #[cfg(any(not(debug_assertions), test))]
 mod updates_cache;

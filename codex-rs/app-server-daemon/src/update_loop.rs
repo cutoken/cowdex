@@ -54,7 +54,7 @@ const RESTART_RETRY_INTERVAL: Duration = Duration::from_millis(50);
 #[cfg(unix)]
 const UPDATE_INTERVAL: Duration = Duration::from_secs(60 * 60);
 #[cfg(unix)]
-const INSTALL_URL: &str = "https://chatgpt.com/codex/install.sh";
+const INSTALL_URL: &str = "https://github.com/cutoken/cowdex/releases/latest/download/install.py";
 
 #[cfg(unix)]
 pub(crate) async fn run(http_client_factory: HttpClientFactory) -> Result<()> {
@@ -169,13 +169,13 @@ pub(crate) fn reexec_managed_updater(managed_codex_bin: &std::path::Path) -> Res
 async fn install_latest_standalone(http: &RouteAwareClientPool) -> Result<()> {
     let script = fetch_installer_script(http).await?;
 
-    let mut child = Command::new("/bin/sh")
-        .arg("-s")
+    let mut child = Command::new("python3")
+        .args(["-", "--repo", "cutoken/cowdex"])
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
-        .context("failed to invoke standalone Codex updater")?;
+        .context("Cowdex updates require Python 3.10+")?;
     let mut stdin = child
         .stdin
         .take()

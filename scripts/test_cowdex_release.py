@@ -17,7 +17,7 @@ from install_cowdex import extract_archive, host_target, install
 
 
 class CowdexReleaseTest(unittest.TestCase):
-    def make_package(self, root):
+    def make_package(self, root, release_version=None):
         target = host_target()
         spec = TARGET_SPECS[target]
         binary = root / "fixture"
@@ -35,7 +35,14 @@ class CowdexReleaseTest(unittest.TestCase):
             codex_windows_sandbox_setup_bin=binary if spec.is_windows else None,
             vault_bin=binary,
         )
-        build_package_dir(package, "1.2.3", PACKAGE_VARIANTS["cowdex"], spec, inputs)
+        build_package_dir(
+            package,
+            "1.2.3",
+            PACKAGE_VARIANTS["cowdex"],
+            spec,
+            inputs,
+            release_version=release_version,
+        )
         validate_package_dir(
             package, PACKAGE_VARIANTS["cowdex"], spec, include_zsh=False
         )
@@ -103,6 +110,10 @@ class CowdexReleaseTest(unittest.TestCase):
             self.assertTrue(first.is_dir())
             self.assertTrue(second.is_dir())
             self.assertNotEqual(first, second)
+            if os.name != "nt":
+                self.assertEqual(
+                    (root / "releases/current").resolve(), second.resolve()
+                )
             self.assertEqual(regular_helper.read_text(), "regular Codex host")
             vault_launcher = bin_dir / (
                 "cowdex-vault.cmd" if os.name == "nt" else "cowdex-vault"
@@ -124,6 +135,18 @@ class CowdexReleaseTest(unittest.TestCase):
                         "hello world",
                     ],
                 )
+
+    def test_release_revision_is_preserved_through_installation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            package = self.make_package(root, release_version="1.2.3-r2")
+            with patch("install_cowdex.subprocess.run"):
+                installed = install(package, root / "installed", root / "bin")
+            metadata = json.loads((installed / "codex-package.json").read_text())
+            self.assertEqual(
+                (metadata["version"], metadata["releaseVersion"]), ("1.2.3", "1.2.3-r2")
+            )
+            self.assertTrue(installed.name.startswith("1.2.3-r2-"))
 
     def test_incomplete_or_wrong_platform_package_cannot_replace_launcher(self):
         with tempfile.TemporaryDirectory() as tmp:

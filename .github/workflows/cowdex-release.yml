@@ -116,7 +116,9 @@ jobs:
         run: |
           extension=tar.gz
           if [ "$RUNNER_OS" = Windows ]; then extension=zip; fi
-          python scripts/build_codex_package.py --variant cowdex --target "$TARGET" --cargo-profile release --package-dir dist/package --archive-output "dist/cowdex-$TARGET.$extension"
+          release_args=()
+          if [ "$GITHUB_EVENT_NAME" = push ]; then release_args=(--release-version "${GITHUB_REF_NAME#cowdex-v}"); fi
+          python scripts/build_codex_package.py --variant cowdex --target "$TARGET" --cargo-profile release --package-dir dist/package --archive-output "dist/cowdex-$TARGET.$extension" "${release_args[@]}"
           python scripts/smoke_cowdex_package.py dist/package
           python scripts/install_cowdex.py --archive "dist/cowdex-$TARGET.$extension" --package-root "$RUNNER_TEMP/cowdex-package" --bin-dir "$RUNNER_TEMP/cowdex-bin"
           if [ "$RUNNER_OS" = Windows ]; then

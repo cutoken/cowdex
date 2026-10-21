@@ -59,6 +59,10 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--release-version",
+        help="Cowdex release version, optionally including its -rN revision.",
+    )
+    parser.add_argument(
         "--force",
         action="store_true",
         help="Replace an existing package directory or archive output.",
@@ -196,7 +200,14 @@ def main() -> int:
         vault_bin=build_vault(spec) if variant.name == "cowdex" else None,
     )
     prepare_package_dir(package_dir, force=args.force)
-    build_package_dir(package_dir, version, variant, spec, inputs)
+    build_package_dir(
+        package_dir,
+        version,
+        variant,
+        spec,
+        inputs,
+        release_version=args.release_version,
+    )
     validate_package_dir(
         package_dir, variant, spec, include_zsh=inputs.zsh_bin is not None
     )

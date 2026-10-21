@@ -1,6 +1,6 @@
 # Cowdex
 
-Cowdex is a Codex fork with agent teams, provider switching, and controls for long-running sessions.
+Cowdex is a Codex fork focused on saving tokens and a slower, deliberate release cycle to reduce exposure to upstream regressions. It adds worker waits and completion events instead of constant status checking, Boss mode for choosing worker models and effort, Ultra with all model-supported effort levels (low through max), guardrails against overengineering and redundant work, and DeepSeek via OpenRouter plus Z.ai Coding Plan support.
 
 ## Install
 
@@ -13,19 +13,15 @@ cowdex
 
 Packages include matching support binaries for Linux, macOS and Windows, on x64 and ARM64. The installer needs Python 3.10+; Cowdex and its vault do not. On Windows, download a release archive and run `py install.py`.
 
-## Features
-
-- **Agent teams:** Ultra enables delegation. Boss fixes worker models and effort; `/boss` changes those defaults during a session.
-- **Providers:** OpenAI, Z.ai Coding Plan, and OpenRouter. Sessions can resume across providers. Z.ai and OpenRouter workers use the lead's provider and model.
-- **Long sessions:** prompt-prefix caching, idle worker unloading, compaction with message ages, timers, retry recovery, and account changes without restarting.
-- **Controls:** `/model`, `/limit_agents`, `/goal`, `/cleanup`, and `/vault`. Cleanup protects running sessions and backs up trimmed history.
-- **Vault:** a standalone browser manager for encrypted credentials, scoped access, approvals, and revocation. Run `cowdex-vault`.
+Cowdex checks its own releases at startup and prompts when an update is available. Run `cowdex update` to update manually; updates also need Python.
 
 ```sh
 cowdex --ultra
 cowdex --ultra --model gpt-6.1-sol --boss sol --worker-effort medium
 cowdex resume --zai
 ```
+
+Lower logging overhead and bounded history caches keep storage lean. `/cleanup` shrinks session files while preserving resume support, backs up originals, removes stale subagents, and protects running sessions.
 
 ## Provider keys
 

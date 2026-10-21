@@ -43,6 +43,9 @@ pub struct CodexPackageLayout {
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub struct CodexPackageManifest {
     pub version: Version,
+    /// Cowdex's numbered release revision; absent in older package manifests.
+    #[serde(default, rename = "releaseVersion")]
+    pub release_version: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -572,6 +575,7 @@ mod tests {
             context.package_manifest(),
             Some(CodexPackageManifest {
                 version: Version::new(1, 2, 3),
+                release_version: None,
             })
         );
         assert_eq!(

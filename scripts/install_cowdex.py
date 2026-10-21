@@ -100,8 +100,10 @@ def install(package, package_root, bin_dir):
     compatible = {expected, expected.replace("linux-musl", "linux-gnu")}
     if metadata.get("variant") != "cowdex" or metadata.get("target") not in compatible:
         raise ValueError(f"Package must be a Cowdex release for {expected}")
-    version = metadata["version"]
-    if not re.fullmatch(r"\d+\.\d+\.\d+(?:[-.][\w.-]+)?", version):
+    version = metadata.get("releaseVersion", metadata["version"])
+    if not re.fullmatch(
+        re.escape(metadata["version"]) + r"(?:-r[1-9][0-9]*)?", version
+    ):
         raise ValueError("Invalid package version")
     suffix = ".exe" if os.name == "nt" else ""
     required = [
@@ -129,6 +131,11 @@ def install(package, package_root, bin_dir):
         staged = Path(tmp) / "package"
         shutil.copytree(package, staged)
         staged.rename(installed)
+    if os.name != "nt":
+        with tempfile.TemporaryDirectory(prefix=".current-", dir=package_root) as tmp:
+            current = Path(tmp) / "current"
+            current.symlink_to(installed, target_is_directory=True)
+            current.replace(package_root / "current")
     bin_dir.mkdir(parents=True, exist_ok=True)
     if os.name == "nt":
         launcher = bin_dir / "cowdex.cmd"
