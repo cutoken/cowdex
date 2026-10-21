@@ -674,7 +674,7 @@ impl Daemon {
             "managed Cowdex install not found at {managed_codex_path}\n\n\
              This command requires the standalone install managed by the Cowdex installer, because \
              the daemon starts and updates app-server from that fixed path.\n\n\
-             Install it with:\n  curl -fsSL https://github.com/cutoken/cowdex/releases/latest/download/install.py | python3 - --repo cutoken/cowdex\n\n\
+             Install it with:\n  curl -fsSL https://raw.githubusercontent.com/cutoken/cowdex/main/scripts/install.sh | sh\n\n\
              Then rerun the command you just tried."
         ))
     }

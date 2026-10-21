@@ -1,19 +1,33 @@
 /// Update action the CLI should perform after the TUI exits.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UpdateAction {
-    /// Run Cowdex's release installer with Python on Unix.
+    /// Run Cowdex's release installer with the Unix shell.
     StandaloneUnix,
-    /// Run Cowdex's release installer with the Python launcher on Windows.
+    /// Run Cowdex's release installer with PowerShell on Windows.
     StandaloneWindows,
 }
 
 impl UpdateAction {
     /// Returns the command for downloading and running Cowdex's latest installer.
     pub fn command_args(self) -> (&'static str, &'static [&'static str]) {
-        const INSTALL: &str = "import urllib.request;exec(compile(urllib.request.urlopen('https://github.com/cutoken/cowdex/releases/latest/download/install.py', timeout=60).read(), '<cowdex installer>', 'exec'), {'__name__':'__main__','__file__':'install.py'})";
         match self {
-            Self::StandaloneUnix => ("python3", &["-c", INSTALL, "--repo", "cutoken/cowdex"]),
-            Self::StandaloneWindows => ("py", &["-3", "-c", INSTALL, "--repo", "cutoken/cowdex"]),
+            Self::StandaloneUnix => (
+                "sh",
+                &[
+                    "-c",
+                    "curl -fsSL https://raw.githubusercontent.com/cutoken/cowdex/main/scripts/install.sh | sh",
+                ],
+            ),
+            Self::StandaloneWindows => (
+                "powershell",
+                &[
+                    "-NoProfile",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-Command",
+                    "irm https://raw.githubusercontent.com/cutoken/cowdex/main/scripts/install.ps1 | iex",
+                ],
+            ),
         }
     }
 

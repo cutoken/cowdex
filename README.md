@@ -5,15 +5,19 @@ Cowdex is a Codex fork focused on saving tokens and a slower, deliberate release
 ## Install
 
 ```sh
-curl -fsSL https://github.com/cutoken/cowdex/releases/latest/download/install.py | python3 - --repo cutoken/cowdex
+curl -fsSL https://raw.githubusercontent.com/cutoken/cowdex/main/scripts/install.sh | sh
 export PATH="$HOME/.local/bin:$PATH"
 cowdex login
 cowdex
 ```
 
-Packages include matching support binaries for Linux, macOS and Windows, on x64 and ARM64. The installer needs Python 3.10+; Cowdex and its vault do not. On Windows, download a release archive and run `py install.py`.
+Packages include matching support binaries for Linux, macOS and Windows, on x64 and ARM64. Installation and updates use the platform shell, with no Python, Node.js, or Go runtime required. On Windows, run:
 
-Cowdex checks its own releases at startup and prompts when an update is available. Run `cowdex update` to update manually; updates also need Python.
+```powershell
+irm https://raw.githubusercontent.com/cutoken/cowdex/main/scripts/install.ps1 | iex
+```
+
+Run the installer again to update.
 
 ```sh
 cowdex --ultra

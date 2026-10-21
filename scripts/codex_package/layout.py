@@ -96,9 +96,8 @@ def build_package_dir(
     if variant.name == "cowdex":
         for name in ("LICENSE", "NOTICE"):
             shutil.copy2(REPO_ROOT / name, package_dir / name)
-        shutil.copy2(
-            REPO_ROOT / "scripts/install_cowdex.py", package_dir / "install.py"
-        )
+        for name in ("install.sh", "install.ps1"):
+            shutil.copy2(REPO_ROOT / "scripts" / name, package_dir / name)
         if inputs.vault_bin is None:
             raise RuntimeError(
                 "Cowdex packages require the self-contained vault executable"
@@ -171,7 +170,8 @@ def validate_package_dir(
     if variant.name == "cowdex":
         required_files.extend(
             [
-                Path("install.py"),
+                Path("install.sh"),
+                Path("install.ps1"),
                 Path("bin") / f"cowdex-vault{spec.exe_suffix}",
             ]
         )

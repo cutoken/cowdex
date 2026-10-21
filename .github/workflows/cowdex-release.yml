@@ -39,8 +39,7 @@ jobs:
             else
               gh release create "$GITHUB_REF_NAME" --draft --target "$GITHUB_SHA" --title "Cowdex ${GITHUB_REF_NAME#cowdex-v}" --notes "Standalone Cowdex packages, including matching support binaries and the native credential vault."
             fi
-            cp scripts/install_cowdex.py /tmp/install.py
-            gh release upload "$GITHUB_REF_NAME" /tmp/install.py --clobber
+            gh release upload "$GITHUB_REF_NAME" scripts/install.sh scripts/install.ps1 --clobber
           fi
 
   build:
@@ -120,10 +119,11 @@ jobs:
           if [ "$GITHUB_EVENT_NAME" = push ]; then release_args=(--release-version "${GITHUB_REF_NAME#cowdex-v}"); fi
           python scripts/build_codex_package.py --variant cowdex --target "$TARGET" --cargo-profile release --package-dir dist/package --archive-output "dist/cowdex-$TARGET.$extension" "${release_args[@]}"
           python scripts/smoke_cowdex_package.py dist/package
-          python scripts/install_cowdex.py --archive "dist/cowdex-$TARGET.$extension" --package-root "$RUNNER_TEMP/cowdex-package" --bin-dir "$RUNNER_TEMP/cowdex-bin"
           if [ "$RUNNER_OS" = Windows ]; then
+            MSYS_NO_PATHCONV=1 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/install.ps1 -Archive "dist/cowdex-$TARGET.$extension" -PackageRoot "$RUNNER_TEMP/cowdex-package" -BinDir "$RUNNER_TEMP/cowdex-bin"
             MSYS_NO_PATHCONV=1 cmd.exe /c "$(cygpath -w "$RUNNER_TEMP/cowdex-bin/cowdex.cmd") --help"
           else
+            sh scripts/install.sh --archive "dist/cowdex-$TARGET.$extension" --package-root "$RUNNER_TEMP/cowdex-package" --bin-dir "$RUNNER_TEMP/cowdex-bin"
             "$RUNNER_TEMP/cowdex-bin/cowdex" --help
           fi
       - name: Upload directly to draft release

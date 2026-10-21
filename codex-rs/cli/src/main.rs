@@ -810,7 +810,7 @@ fn run_update_action(action: UpdateAction) -> anyhow::Result<()> {
     let status = std::process::Command::new(command)
         .args(args)
         .status()
-        .map_err(|err| anyhow::anyhow!("Cowdex updates require Python 3.10+ ({command}): {err}"))?;
+        .map_err(|err| anyhow::anyhow!("Failed to start Cowdex updater ({command}): {err}"))?;
     if !status.success() {
         anyhow::bail!("`{cmd_str}` failed with status {status}");
     }
