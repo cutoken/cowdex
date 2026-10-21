@@ -55,7 +55,7 @@ class CowdexReleaseTest(unittest.TestCase):
             root = Path(tmp)
             package = self.make_package(root)
             original = {
-                str(p.relative_to(package)): p.read_bytes()
+                p.relative_to(package).as_posix(): p.read_bytes()
                 for p in package.rglob("*")
                 if p.is_file()
             }
@@ -112,7 +112,9 @@ class CowdexReleaseTest(unittest.TestCase):
                 result = self.run_installer(root, archive)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertIn("Installed Cowdex 1.2.3-r2", result.stdout)
-            releases = list((root / "installed/releases").iterdir())
+            releases = [
+                path.resolve() for path in (root / "installed/releases").iterdir()
+            ]
             self.assertEqual(len(releases), 2)
             current = (root / "installed/current").resolve()
             self.assertIn(current, releases)
