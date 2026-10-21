@@ -23,6 +23,8 @@ cowdex resume --zai
 
 Lower logging overhead and bounded history caches keep storage lean. `/cleanup` shrinks session files while preserving resume support, backs up originals, removes stale subagents, and protects running sessions.
 
+Use `cowdex keepwarm` to keep additional accounts warm. It signs in separately and runs a research task without replacing your current login.
+
 ## Provider keys
 
 Use `ZAI_API_KEY` or `OPENROUTER_API_KEY`, or save a key through stdin:
