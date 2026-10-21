@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sysconfig
 import tarfile
 import tempfile
 import unittest
@@ -20,11 +21,12 @@ from codex_package.targets import (
 
 
 class CowdexReleaseTest(unittest.TestCase):
-    def make_package(self, root):
-        spec = TARGET_SPECS[default_target()]
-        binary = root / "fixture"
-        binary.write_text('#!/bin/sh\nprintf "%s\\n" "$@"\n')
-        binary.chmod(0o755)
+    def make_package(self, root, *, binary=None, spec=None):
+        spec = spec or TARGET_SPECS[default_target()]
+        if binary is None:
+            binary = root / "fixture"
+            binary.write_text('#!/bin/sh\nprintf "%s\\n" "$@"\n')
+            binary.chmod(0o755)
         package = root / "package"
         package.mkdir()
         inputs = PackageInputs(
@@ -95,6 +97,64 @@ class CowdexReleaseTest(unittest.TestCase):
             text=True,
             capture_output=True,
         )
+
+    @unittest.skipUnless(os.name == "nt", "Windows installer regression check")
+    def test_windows_installer_uses_native_architecture_inside_x64_build_shell(self):
+        with tempfile.TemporaryDirectory(prefix="cowdex windows install ") as tmp:
+            root = Path(tmp)
+            arch = "arm64" if sysconfig.get_platform() == "win-arm64" else "amd64"
+            target = "aarch64" if arch == "arm64" else "x86_64"
+            source = root / "fixture.go"
+            source.write_text(
+                'package main\nimport "fmt"\nfunc main() { fmt.Println("fixture") }\n'
+            )
+            binary = root / "fixture.exe"
+            subprocess.run(
+                ["go", "build", "-o", str(binary), str(source)],
+                env={
+                    **os.environ,
+                    "GOOS": "windows",
+                    "GOARCH": arch,
+                    "CGO_ENABLED": "0",
+                },
+                check=True,
+            )
+            package = self.make_package(
+                root, binary=binary, spec=TARGET_SPECS[f"{target}-pc-windows-msvc"]
+            )
+            archive = root / "package.zip"
+            write_archive(package, archive, force=False)
+            result = subprocess.run(
+                [
+                    "powershell.exe",
+                    "-NoProfile",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-File",
+                    str(Path(__file__).with_name("install.ps1")),
+                    "-Archive",
+                    str(archive),
+                    "-PackageRoot",
+                    str(root / "installed"),
+                    "-BinDir",
+                    str(root / "bin"),
+                ],
+                env={
+                    **os.environ,
+                    "PROCESSOR_ARCHITECTURE": "AMD64",
+                    "PROCESSOR_ARCHITEW6432": "AMD64",
+                },
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn(f"1.2.3-r2-{target}-pc-windows-msvc", result.stdout)
+            self.assertEqual(
+                subprocess.check_output(
+                    [str(root / "bin/cowdex.cmd"), "--version"], text=True
+                ).strip(),
+                "fixture",
+            )
 
     @unittest.skipIf(
         os.name == "nt", "Windows installation is exercised by the release workflow"
