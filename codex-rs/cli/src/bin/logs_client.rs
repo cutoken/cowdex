@@ -15,7 +15,7 @@ use owo_colors::OwoColorize;
 
 #[derive(Debug, Parser)]
 #[command(name = "codex-state-logs")]
-#[command(about = "Tail Codex logs from the dedicated logs SQLite DB with simple filters")]
+#[command(about = "Tail Cowdex logs from the dedicated logs SQLite DB with simple filters")]
 struct Args {
     /// Path to CODEX_HOME. Defaults to $CODEX_HOME or ~/.codex.
     #[arg(long, env = "CODEX_HOME")]
@@ -416,7 +416,7 @@ mod tests {
         assert_eq!(args.level, Some(LogLevelThreshold::Warn));
     }
 
-    /// Explicit database selection must not parse an overridden Codex home.
+    /// Explicit database selection must not parse an overridden Cowdex home.
     #[tokio::test]
     async fn direct_db_skips_codex_home_config() {
         let codex_home = tempfile::tempdir().expect("create Codex home");

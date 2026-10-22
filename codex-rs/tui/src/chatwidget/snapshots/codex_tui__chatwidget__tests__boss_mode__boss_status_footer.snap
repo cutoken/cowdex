@@ -1,10 +1,9 @@
 ---
 source: tui/src/chatwidget/boss_mode_tests.rs
-assertion_line: 133
 expression: normalized_backend_snapshot(terminal.backend())
 ---
 "                                                            "
 "                                                            "
-"› Ask Codex to do anything                                  "
+"› Ask Cowdex to do anything                                 "
 "                                                            "
 "  gpt-5.2 high · Boss luna max · Context 100% left · T 0 | …"

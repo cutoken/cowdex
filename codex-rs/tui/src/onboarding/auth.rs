@@ -396,7 +396,7 @@ impl AuthModeWidget {
         let mut lines: Vec<Line> = vec![
             Line::from(vec![
                 "  ".into(),
-                "Sign in with ChatGPT to use Codex as part of your paid plan".into(),
+                "Sign in with ChatGPT to use Cowdex as part of your paid plan".into(),
             ]),
             Line::from(vec![
                 "  ".into(),
@@ -552,7 +552,7 @@ impl AuthModeWidget {
     fn render_chatgpt_success_message(&self, area: Rect, buf: &mut Buffer) {
         let mut docs_line = HyperlinkLine::new(Line::from("  For more details see the ").dim());
         docs_line.push_span(
-            "Codex docs".underlined(),
+            "Cowdex docs".underlined(),
             Some("https://developers.openai.com/codex/security"),
         );
         let mut preferences_line =
@@ -571,10 +571,10 @@ impl AuthModeWidget {
             "".into(),
             "  Before you start:".into(),
             "".into(),
-            "  Decide how much autonomy you want to grant Codex".into(),
+            "  Decide how much autonomy you want to grant Cowdex".into(),
             docs_line,
             "".into(),
-            "  Codex can make mistakes".into(),
+            "  Cowdex can make mistakes".into(),
             HyperlinkLine::new(
                 "  Review the code it writes and commands it runs"
                     .dim()
@@ -613,7 +613,7 @@ impl AuthModeWidget {
         let lines = vec![
             "✓ API key configured".fg(Color::Green).into(),
             "".into(),
-            "  Codex will use usage-based billing with your API key.".into(),
+            "  Cowdex will use usage-based billing with your API key.".into(),
         ];
 
         Paragraph::new(lines)
@@ -1264,7 +1264,7 @@ mod tests {
 
         assert_eq!(
             collect_osc8_chars(&buf, area, "https://developers.openai.com/codex/security"),
-            "Codex docs"
+            "Cowdex docs"
         );
         assert_eq!(
             collect_osc8_chars(&buf, area, "https://chatgpt.com/#settings"),
@@ -1303,10 +1303,10 @@ mod tests {
 
           Before you start:
 
-          Decide how much autonomy you want to grant Codex
-          For more details see the Codex docs
+          Decide how much autonomy you want to grant Cowdex
+          For more details see the Cowdex docs
 
-          Codex can make mistakes
+          Cowdex can make mistakes
           Review the code it writes and commands it runs
 
           Powered by your ChatGPT account

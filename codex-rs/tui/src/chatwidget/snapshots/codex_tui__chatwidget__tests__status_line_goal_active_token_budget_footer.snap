@@ -4,6 +4,6 @@ expression: normalized_backend_snapshot(terminal.backend())
 ---
 "                                                                                "
 "                                                                                "
-"› Ask Codex to do anything                                                      "
+"› Ask Cowdex to do anything                                                     "
 "                                                                                "
 "  gpt-5.4 · T 0 | CI 0 | NI 0 | OUT_R 0 | OU… GL_ac: Keep improving the bench…  "

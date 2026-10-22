@@ -6,6 +6,6 @@ expression: normalized_backend_snapshot(terminal.backend())
 "• Checking files (0s • esc to interrupt) · 1 background terminal running · /ps …"
 "                                                                                "
 "                                                                                "
-"› Ask Codex to do anything                                                      "
+"› Ask Cowdex to do anything                                                     "
 "                                                                                "
 "  gpt-6.1-sol default · /tmp/project · T 0 | CI 0 | NI 0 | OUT_R 0 | OUT_T 0    "

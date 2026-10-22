@@ -4,20 +4,20 @@ expression: "snapshots.join(\"\\n---\\n\")"
 ---
 empty (48 columns):
 ╭───────────────────────────────────────╮
-│ >_ OpenAI Codex (v<VERSION>)            │
+│ 🐮  Cowdex (v<VERSION>)                  │
 │                                       │
 │ model:     loading   /model to change │
 │ directory: loading                    │
 ╰───────────────────────────────────────╯
 
 
-› Ask Codex to do anything
+› Ask Cowdex to do anything
 
   ? for shortcuts
 ---
 multiline (48 columns):
 ╭───────────────────────────────────────╮
-│ >_ OpenAI Codex (v<VERSION>)            │
+│ 🐮  Cowdex (v<VERSION>)                  │
 │                                       │
 │ model:     loading   /model to change │
 │ directory: loading                    │
@@ -31,7 +31,7 @@ multiline (48 columns):
 ---
 narrow (18 columns):
 ╭────────────────╮
-│ >_ OpenAI Cod… │
+│ 🐮  Cowdex (v0… │
 │                │
 │ model:     lo… │
 │ directory: …ng │
