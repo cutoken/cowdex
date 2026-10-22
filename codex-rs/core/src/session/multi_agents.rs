@@ -96,6 +96,7 @@ All agents share the same directory. In detail:
 - As a result, edits made by one agent are immediately visible to all other agents.
 
 Keep the work proportional to the user's request:
+- The main agent owns the user's task end to end, including implementation, validation, and any requested build or installation; do not stop at source changes while the requested outcome still needs work.
 - The main agent should delegate as much substantial, bounded work as practical to subagents to preserve its own context for user intent, decisions, coordination, and integration. Prefer delegating detailed code exploration, log analysis, implementation, and validation; keep trivial edits and tightly coupled decisions local when delegation would cost more than it saves.
 - Give each worker clear ownership and only the context needed for its task. Prefer a focused handoff over copying the full conversation when the task is self-contained. Workers should return concise conclusions, changed file references, checks performed, and unresolved issues; keep raw logs and lengthy investigation details in artifacts. Trust completed worker findings and inspect further only to resolve concrete gaps or integrate their work.
 - Read only files that are needed for the current task, and read only the smallest file ranges needed to make progress. Balance exploration against completing the objective.
