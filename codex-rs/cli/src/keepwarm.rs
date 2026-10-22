@@ -21,6 +21,7 @@ use std::future::Future;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
+use std::process::Stdio;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
@@ -131,7 +132,9 @@ where
         "--output-last-message",
     ]);
     research.arg(&report_path).arg(research_prompt(today));
+    research.stdout(Stdio::null()).stderr(Stdio::null());
 
+    eprintln!("Refreshing account...");
     let research_succeeded = run_child(research).await;
     match research_succeeded {
         Ok(true)

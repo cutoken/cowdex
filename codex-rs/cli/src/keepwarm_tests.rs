@@ -35,10 +35,29 @@ impl ObservedCommand {
 async fn successful_run_isolates_both_children_and_keeps_only_the_report() -> Result<()> {
     let temp_root = tempfile::tempdir()?;
     let report_dir = temp_root.path().join("stocks");
-    let executable = temp_root.path().join("cowdex-test");
+    let executable = temp_root.path().join(if cfg!(windows) {
+        "cowdex-test.cmd"
+    } else {
+        "cowdex-test"
+    });
+    #[cfg(windows)]
+    fs::write(
+        &executable,
+        "@echo off\r\necho child stdout\r\necho child stderr >&2\r\n",
+    )?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::write(
+            &executable,
+            "#!/bin/sh\nprintf 'child stdout\\n'\nprintf 'child stderr\\n' >&2\n",
+        )?;
+        fs::set_permissions(&executable, fs::Permissions::from_mode(0o700))?;
+    }
     let today =
         NaiveDate::from_ymd_opt(/*year*/ 2026, /*month*/ 9, /*day*/ 12).expect("valid date");
     let mut observed = Vec::new();
+    let mut child_output = Vec::new();
     let mut isolated_home = None;
 
     let report = run_with(
@@ -47,7 +66,7 @@ async fn successful_run_isolates_both_children_and_keeps_only_the_report() -> Re
         &report_dir,
         today,
         LoginFlow::Browser,
-        |command| {
+        |mut command| {
             observed.push(ObservedCommand::capture(&command));
             isolated_home.get_or_insert_with(|| {
                 command
@@ -81,7 +100,14 @@ async fn successful_run_isolates_both_children_and_keeps_only_the_report() -> Re
                     return std::future::ready(Err(error.into()));
                 }
             }
-            std::future::ready(Ok(true))
+            let result = command.output().map(|output| {
+                child_output.push((
+                    String::from_utf8_lossy(&output.stdout).trim().to_string(),
+                    String::from_utf8_lossy(&output.stderr).trim().to_string(),
+                ));
+                output.status.success()
+            });
+            std::future::ready(result.map_err(Into::into))
         },
     )
     .await?;
@@ -143,11 +169,10 @@ async fn successful_run_isolates_both_children_and_keeps_only_the_report() -> Re
         report.account_email.as_deref(),
         Some("keepwarm@example.com")
     );
-    insta::assert_snapshot!(
-        report
-            .to_string()
-            .replace(report_path.to_str().unwrap(), "<REPORT_PATH>")
-    );
+    let report = report
+        .to_string()
+        .replace(report_path.to_str().unwrap(), "<REPORT_PATH>");
+    insta::assert_debug_snapshot!((child_output, report));
     assert!(!isolated_home.exists());
     Ok(())
 }

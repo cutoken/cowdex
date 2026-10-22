@@ -1,6 +1,17 @@
 ---
 source: cli/src/keepwarm_tests.rs
-expression: "report.to_string().replace(report_path.to_str().unwrap(), \"<REPORT_PATH>\")"
+expression: "(child_output, report)"
 ---
-Research report saved to <REPORT_PATH>
-keepwarm@example.com account is refreshed.
+(
+    [
+        (
+            "child stdout",
+            "child stderr",
+        ),
+        (
+            "",
+            "",
+        ),
+    ],
+    "Research report saved to <REPORT_PATH>\nkeepwarm@example.com account is refreshed.",
+)
