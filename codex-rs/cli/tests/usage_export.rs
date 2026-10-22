@@ -32,10 +32,19 @@ fn usage_export_runs_offline_with_default_and_explicit_intervals() -> Result<()>
         .env("CODEX_HOME", home.path())
         .current_dir(home.path())
         .arg("--export-usage");
-    command
-        .assert()
-        .success()
-        .stdout(predicates::str::contains("1 projects, 120 tokens"));
+    let result = command.assert().success().get_output().clone();
+    assert!(String::from_utf8_lossy(&result.stdout).contains("1 projects, 120 tokens"));
+    let stderr = String::from_utf8_lossy(&result.stderr);
+    let progress: Vec<_> = stderr
+        .lines()
+        .filter(|line| {
+            line.starts_with("Finding recent")
+                || line.starts_with("Reading usage: 0/")
+                || line.starts_with("Reading usage: 1/1 files (2 records)")
+                || *line == "Rendering PNG..."
+        })
+        .collect();
+    insta::assert_snapshot!("usage_export_progress", progress.join("\n"));
     let default = std::fs::read(home.path().join("cowdex-usage-24h.png"))?;
     assert_eq!(&default[..8], b"\x89PNG\r\n\x1a\n");
     let output = home.path().join("month.png");

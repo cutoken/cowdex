@@ -1,10 +1,7 @@
 use std::collections::BTreeMap;
 use std::collections::HashSet;
 use std::fs;
-use std::fs::File;
 use std::io::BufRead;
-use std::io::BufReader;
-use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -13,6 +10,9 @@ use chrono::DateTime;
 use chrono::Utc;
 use codex_protocol::protocol::TokenUsage;
 use serde_json::Value;
+
+use super::progress::Progress;
+use super::recent;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(super) struct Tokens(pub [u64; 4]);
@@ -59,6 +59,7 @@ pub(super) fn collect(
     start: DateTime<Utc>,
     end: DateTime<Utc>,
 ) -> anyhow::Result<Report> {
+    eprintln!("Finding recent usage files...");
     let mut paths = Vec::new();
     for dir in ["backups/rollouts", "sessions", "archived_sessions"] {
         files(&home.join(dir), &mut paths)?;
@@ -70,14 +71,49 @@ pub(super) fn collect(
             !path.starts_with(home.join("backups")),
         )
     });
+    let recent_paths: Vec<_> = paths
+        .iter()
+        .filter(|path| {
+            fs::metadata(path)
+                .and_then(|meta| meta.modified())
+                .map(DateTime::<Utc>::from)
+                .map_or(true, |modified| modified >= start)
+        })
+        .cloned()
+        .collect();
+    // Unmarked legacy fork copies need ancestor response IDs to avoid double billing.
+    let full = recent_paths.iter().any(|path| {
+        header(path, start).is_ok_and(|record| {
+            let meta = &record["payload"];
+            !meta["forked_from_id"].is_null()
+                && meta["history_base"].is_null()
+                && meta["subagent_history_start_ordinal"].is_null()
+        })
+    });
+    let (paths, mode) = if full {
+        (paths, recent::Scan::Full)
+    } else {
+        (recent_paths, recent::Scan::Recent)
+    };
     let mut report = Report::default();
     let mut seen = HashSet::new();
-    for path in paths {
-        let result = scan(&path, start, end, &mut seen, &mut report);
+    let mut progress = Progress::new(paths.len());
+    for (index, path) in paths.iter().enumerate() {
+        progress.begin(index + 1);
+        let result = scan(
+            path,
+            start,
+            end,
+            &mut seen,
+            &mut report,
+            mode,
+            &mut progress,
+        );
         if result.is_err() {
             report.skipped += 1;
         }
     }
+    progress.finish();
     Ok(report)
 }
 
@@ -111,23 +147,26 @@ fn scan(
     end: DateTime<Utc>,
     seen: &mut HashSet<String>,
     report: &mut Report,
+    mode: recent::Scan,
+    progress: &mut Progress,
 ) -> anyhow::Result<()> {
-    let file = File::open(path)?;
-    let length = file.metadata()?.len();
-    let file = file.take(length);
-    let mut reader: Box<dyn BufRead> = if path.extension().is_some_and(|ext| ext == "zst") {
-        Box::new(BufReader::new(zstd::stream::read::Decoder::new(file)?))
-    } else {
-        Box::new(BufReader::new(file))
-    };
+    let metadata = header(path, start)?;
+    let metadata = &metadata["payload"];
+    let mut reader = recent::open(path, start, mode)?;
     let mut buffer = Vec::new();
-    let mut project = PathBuf::from("Unknown project");
+    let mut project = metadata["cwd"]
+        .as_str()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("Unknown project"));
     let mut previous: Option<TokenUsage> = None;
-    let mut own_start = 0;
-    let mut thread = String::new();
+    let mut own_start = metadata["subagent_history_start_ordinal"]
+        .as_u64()
+        .unwrap_or(0);
+    let mut thread = metadata["id"].as_str().unwrap_or_default().to_owned();
     let mut turn = String::new();
     let mut raw_since_count = false;
     while read_record(&mut reader, &mut buffer)? {
+        progress.record();
         // Avoid deserializing tool output, prompts and other large history payloads.
         if ![
             b"session_meta".as_slice(),
@@ -248,6 +287,13 @@ fn scan(
         }
     }
     Ok(())
+}
+
+fn header(path: &Path, start: DateTime<Utc>) -> anyhow::Result<Value> {
+    let mut reader = recent::open(path, start, recent::Scan::Full)?;
+    let mut record = Vec::new();
+    read_record(&mut reader, &mut record)?;
+    Ok(serde_json::from_slice(&record)?)
 }
 
 // Bound memory even if a rollout contains a multi-gigabyte tool-output line.

@@ -9,6 +9,8 @@ use clap::Args;
 
 mod chart;
 mod history;
+mod progress;
+mod recent;
 
 #[derive(Debug, Args)]
 pub(crate) struct Options {
@@ -70,6 +72,7 @@ pub(crate) fn run(options: Options, end: DateTime<Utc>) -> anyhow::Result<()> {
             .is_some_and(|ext| ext.eq_ignore_ascii_case("png"))),
         "--usage-output must name a .png file"
     );
+    eprintln!("Rendering PNG...");
     chart::write_png(&report, start, end, &output)?;
     println!(
         "Saved {} ({} projects, {} tokens).",

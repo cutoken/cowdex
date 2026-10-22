@@ -1,0 +1,9 @@
+---
+source: cli/tests/usage_export.rs
+assertion_line: 47
+expression: "progress.join(\"\\n\")"
+---
+Finding recent usage files...
+Reading usage: 0/1 files (0 records)
+Reading usage: 1/1 files (2 records)
+Rendering PNG...

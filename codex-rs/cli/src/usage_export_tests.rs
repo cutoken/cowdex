@@ -334,3 +334,121 @@ fn trimmed_legacy_checkpoint_does_not_repeat_usage_from_backup() {
         Tokens([50, 50, 2, 8])
     );
 }
+
+#[test]
+fn recent_scan_seeks_past_old_tool_output_and_keeps_usage_at_the_boundary() {
+    use std::io::Write;
+    let home = tempfile::tempdir().expect("test directory");
+    let sessions = home.path().join("sessions");
+    fs::create_dir(&sessions).expect("sessions directory");
+    let path = sessions.join("rollout-large.jsonl");
+    let mut file = fs::File::create(&path).expect("rollout file");
+    writeln!(file, "{}", meta("main", "/work/large")).expect("metadata");
+    let old = format!(
+        "{{\"timestamp\":\"2026-10-20T12:00:00Z\",\"type\":\"response_item\",\"payload\":{}}}\n",
+        json!("x".repeat(4096))
+    );
+    for _ in 0..1024 {
+        file.write_all(old.as_bytes()).expect("old history");
+    }
+    let recent = raw(
+        "recent-response",
+        usage(
+            /*input*/ 100, /*cached*/ 60, /*output*/ 20, /*reasoning*/ 5,
+        ),
+    );
+    writeln!(file, "{recent}").expect("recent response");
+    drop(file);
+    let (start, end) = window();
+    let offset =
+        super::recent::start_offset(&mut fs::File::open(&path).expect("read rollout"), start)
+            .expect("seek offset");
+    assert!(
+        offset > 2 * 1024 * 1024,
+        "the recent scan must skip the old prefix"
+    );
+    assert_eq!(
+        history::collect(home.path(), start, end)
+            .expect("usage report")
+            .total(),
+        Tokens([60, 40, 5, 15])
+    );
+}
+
+#[test]
+fn recent_scan_skips_old_files_without_opening_them() {
+    let home = tempfile::tempdir().expect("test directory");
+    let sessions = home.path().join("sessions");
+    fs::create_dir(&sessions).expect("sessions directory");
+    let path = sessions.join("rollout-old.jsonl.zst");
+    fs::write(&path, b"This is not a readable zstd stream").expect("old file");
+    let (start, end) = window();
+    fs::File::options()
+        .write(true)
+        .open(path)
+        .expect("old rollout")
+        .set_times(
+            fs::FileTimes::new().set_modified(std::time::SystemTime::from(
+                start - chrono::Duration::days(2),
+            )),
+        )
+        .expect("old modification date");
+    let report = history::collect(home.path(), start, end).expect("usage report");
+    assert_eq!((report.total(), report.skipped), (Tokens::default(), 0));
+}
+
+#[test]
+fn unmarked_legacy_forks_keep_ancestor_ids_when_filtering_recent_usage() {
+    let home = tempfile::tempdir().expect("test directory");
+    let mut old = raw(
+        "inherited-response",
+        usage(
+            /*input*/ 100, /*cached*/ 60, /*output*/ 20, /*reasoning*/ 5,
+        ),
+    );
+    old["timestamp"] = json!("2026-10-20T12:00:00Z");
+    rollout(
+        home.path(),
+        "sessions/rollout-01-parent.jsonl",
+        vec![meta("parent", "/work/alpha"), old],
+    );
+    let mut child_meta = meta("child", "/work/alpha");
+    child_meta["payload"]["forked_from_id"] = json!("parent");
+    rollout(
+        home.path(),
+        "sessions/rollout-02-child.jsonl",
+        vec![
+            child_meta,
+            raw(
+                "inherited-response",
+                usage(
+                    /*input*/ 100, /*cached*/ 60, /*output*/ 20,
+                    /*reasoning*/ 5,
+                ),
+            ),
+            raw(
+                "new-response",
+                usage(
+                    /*input*/ 50, /*cached*/ 40, /*output*/ 10, /*reasoning*/ 3,
+                ),
+            ),
+        ],
+    );
+    let (start, end) = window();
+    fs::File::options()
+        .write(true)
+        .open(home.path().join("sessions/rollout-01-parent.jsonl"))
+        .expect("parent rollout")
+        .set_times(
+            fs::FileTimes::new().set_modified(std::time::SystemTime::from(
+                start - chrono::Duration::days(2),
+            )),
+        )
+        .expect("parent modification date");
+    assert_eq!(
+        history::collect(home.path(), start, end)
+            .expect("usage report")
+            .total(),
+        Tokens([40, 10, 3, 7])
+    );
+}
