@@ -62,6 +62,7 @@ mod remote_control_cmd;
 #[cfg(target_os = "windows")]
 mod sandbox_setup;
 mod state_db_recovery;
+mod usage_export;
 #[cfg(not(windows))]
 mod wsl_paths;
 
@@ -123,6 +124,9 @@ struct MultitoolCli {
 
     #[clap(flatten)]
     interactive: TuiCli,
+
+    #[clap(flatten)]
+    usage: usage_export::Options,
 
     #[clap(subcommand)]
     subcommand: Option<Subcommand>,
@@ -971,7 +975,15 @@ async fn cli_main(
         remote,
         mut interactive,
         subcommand,
+        usage,
     } = MultitoolCli::parse();
+    if usage.export_usage.is_some() {
+        anyhow::ensure!(
+            subcommand.is_none(),
+            "--export-usage cannot be combined with a subcommand"
+        );
+        return usage_export::run(usage, chrono::Utc::now());
+    }
     // Fold --enable/--disable into config overrides so they flow to all subcommands.
     let toggle_overrides = feature_toggles.to_overrides()?;
     root_config_overrides.raw_overrides.extend(toggle_overrides);
@@ -2782,6 +2794,7 @@ mod tests {
             subcommand,
             feature_toggles: _,
             remote: _,
+            usage: _,
         } = cli;
         interactive
             .shared
@@ -2819,6 +2832,7 @@ mod tests {
             subcommand,
             feature_toggles: _,
             remote: _,
+            usage: _,
         } = cli;
         interactive
             .shared
@@ -2863,6 +2877,7 @@ mod tests {
             subcommand,
             feature_toggles: _,
             remote: _,
+            usage: _,
         } = cli;
 
         let Subcommand::Archive(SessionArchiveCommand {

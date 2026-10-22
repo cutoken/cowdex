@@ -1,0 +1,22 @@
+---
+source: cli/src/usage_export_tests.rs
+assertion_line: 297
+expression: "chart::svg(&Report::default(), start, end).expect(\"valid test fixture\")"
+---
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="460" viewBox="0 0 1600 460">
+<defs>
+  <linearGradient id="paper" x2="0.8" y2="1"><stop stop-color="#f8f5ee"/><stop offset="1" stop-color="#e9ede9"/></linearGradient>
+  <linearGradient id="ink" x2="1" y2="1"><stop stop-color="#243c3a"/><stop offset="1" stop-color="#172a2b"/></linearGradient>
+  <linearGradient id="sheen" x2="0" y2="1"><stop stop-color="#fff" stop-opacity=".18"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".1"/></linearGradient>
+  <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#233d36" flood-opacity=".1"/></filter>
+</defs>
+<rect width="1600" height="460" fill="url(#paper)"/>
+<g font-family="DM Sans" fill="#243c3a">
+<text x="64" y="58" font-size="19" letter-spacing="3">COWDEX / TOKEN USAGE</text>
+<text x="64" y="119" font-size="42">Token usage by project</text>
+<text x="64" y="154" font-size="19" fill="#61736c">21 Oct 2026, 12:00 — 22 Oct 2026, 12:00 UTC</text>
+<rect x="1030" y="42" width="506" height="122" rx="18" fill="url(#ink)" filter="url(#shadow)"/>
+<text x="1058" y="87" font-size="33" fill="#fff">0 tokens</text>
+<text x="1058" y="132" font-size="18" fill="#b8d2c9">0 projects · 0% of input cached</text>
+<rect x="40" y="198" width="1520" height="186" rx="20" fill="#fffefa" filter="url(#shadow)"/>
+<rect x="70" y="228" width="12" height="12" rx="3" fill="#277d71"/><text x="93" y="241" font-size="18">Cached input</text><rect x="400" y="228" width="12" height="12" rx="3" fill="#769cc5"/><text x="423" y="241" font-size="18">Uncached input</text><rect x="730" y="228" width="12" height="12" rx="3" fill="#9d7fbb"/><text x="753" y="241" font-size="18">Reasoning</text><rect x="1060" y="228" width="12" height="12" rx="3" fill="#dd9d58"/><text x="1083" y="241" font-size="18">Other output</text><path d="M400 286 V348" stroke="#e5e9e3" stroke-dasharray="3 6"/><text x="400" y="277" font-size="15" text-anchor="middle" fill="#78867f">0</text><path d="M630 286 V348" stroke="#e5e9e3" stroke-dasharray="3 6"/><text x="630" y="277" font-size="15" text-anchor="middle" fill="#78867f">0</text><path d="M860 286 V348" stroke="#e5e9e3" stroke-dasharray="3 6"/><text x="860" y="277" font-size="15" text-anchor="middle" fill="#78867f">0</text><path d="M1090 286 V348" stroke="#e5e9e3" stroke-dasharray="3 6"/><text x="1090" y="277" font-size="15" text-anchor="middle" fill="#78867f">0</text><path d="M1320 286 V348" stroke="#e5e9e3" stroke-dasharray="3 6"/><text x="1320" y="277" font-size="15" text-anchor="middle" fill="#78867f">1</text><text x="70" y="331" font-size="22" fill="#61736c">No recorded usage in this interval.</text><text x="64" y="426" font-size="16" fill="#61736c">Main agents + workers · Retained local history · Tokens, not cost</text></g></svg>

@@ -55,6 +55,7 @@ Cowdex can then see your boards and files on AgentCron.
 | `cowdex --zai`                | Work through your Z.ai Coding Plan.                                                      |
 | `cowdex keepwarm`             | Sign into another account and keep it active.                                            |
 | `cowdex cleanup`              | Shrink session files and clear stale subagents and logs while preserving resume support. |
+| `cowdex --export-usage 1month` | Save a PNG of token usage by project; defaults to the last 24 hours. |
 | `cowdex update`               | Install the latest Cowdex release.                                                       |
 | `cowdex-vault`                | Open the credential vault manager.                                                       |
 

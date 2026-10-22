@@ -1,0 +1,22 @@
+---
+source: cli/src/usage_export_tests.rs
+assertion_line: 280
+expression: "chart::svg(&report, start, end).expect(\"valid test fixture\")"
+---
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="530" viewBox="0 0 1600 530">
+<defs>
+  <linearGradient id="paper" x2="0.8" y2="1"><stop stop-color="#f8f5ee"/><stop offset="1" stop-color="#e9ede9"/></linearGradient>
+  <linearGradient id="ink" x2="1" y2="1"><stop stop-color="#243c3a"/><stop offset="1" stop-color="#172a2b"/></linearGradient>
+  <linearGradient id="sheen" x2="0" y2="1"><stop stop-color="#fff" stop-opacity=".18"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".1"/></linearGradient>
+  <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#233d36" flood-opacity=".1"/></filter>
+</defs>
+<rect width="1600" height="530" fill="url(#paper)"/>
+<g font-family="DM Sans" fill="#243c3a">
+<text x="64" y="58" font-size="19" letter-spacing="3">COWDEX / TOKEN USAGE</text>
+<text x="64" y="119" font-size="42">Token usage by project</text>
+<text x="64" y="154" font-size="19" fill="#61736c">21 Oct 2026, 12:00 — 22 Oct 2026, 12:00 UTC</text>
+<rect x="1030" y="42" width="506" height="122" rx="18" fill="url(#ink)" filter="url(#shadow)"/>
+<text x="1058" y="87" font-size="33" fill="#fff">11.00M tokens</text>
+<text x="1058" y="132" font-size="18" fill="#b8d2c9">2 projects · 82% of input cached</text>
+<rect x="40" y="198" width="1520" height="256" rx="20" fill="#fffefa" filter="url(#shadow)"/>
+<rect x="70" y="228" width="12" height="12" rx="3" fill="#277d71"/><text x="93" y="241" font-size="18">Cached input</text><rect x="400" y="228" width="12" height="12" rx="3" fill="#769cc5"/><text x="423" y="241" font-size="18">Uncached input</text><rect x="730" y="228" width="12" height="12" rx="3" fill="#9d7fbb"/><text x="753" y="241" font-size="18">Reasoning</text><rect x="1060" y="228" width="12" height="12" rx="3" fill="#dd9d58"/><text x="1083" y="241" font-size="18">Other output</text><path d="M400 286 V418" stroke="#e5e9e3" stroke-dasharray="3 6"/><text x="400" y="277" font-size="15" text-anchor="middle" fill="#78867f">0</text><path d="M630 286 V418" stroke="#e5e9e3" stroke-dasharray="3 6"/><text x="630" y="277" font-size="15" text-anchor="middle" fill="#78867f">2.50M</text><path d="M860 286 V418" stroke="#e5e9e3" stroke-dasharray="3 6"/><text x="860" y="277" font-size="15" text-anchor="middle" fill="#78867f">5.00M</text><path d="M1090 286 V418" stroke="#e5e9e3" stroke-dasharray="3 6"/><text x="1090" y="277" font-size="15" text-anchor="middle" fill="#78867f">7.50M</text><path d="M1320 286 V418" stroke="#e5e9e3" stroke-dasharray="3 6"/><text x="1320" y="277" font-size="15" text-anchor="middle" fill="#78867f">10.00M</text><text x="70" y="331" font-size="21">Alpha &amp; Beta</text><text x="1518" y="331" text-anchor="end" font-size="20">10.00M</text><clipPath id="bar0"><rect x="400" y="309" width="920" height="30" rx="6"/></clipPath><g clip-path="url(#bar0)"><rect x="400" y="309" width="690" height="30" fill="#277d71"/><rect x="1090" y="309" width="138" height="30" fill="#769cc5"/><rect x="1228" y="309" width="27.6" height="30" fill="#9d7fbb"/><rect x="1255.6" y="309" width="64.4" height="30" fill="#dd9d58"/><rect x="400" y="309" width="920" height="30" fill="url(#sheen)"/></g><text x="70" y="401" font-size="21">notes</text><text x="1518" y="401" text-anchor="end" font-size="20">1.00M</text><clipPath id="bar1"><rect x="400" y="379" width="92" height="30" rx="6"/></clipPath><g clip-path="url(#bar1)"><rect x="400" y="379" width="46" height="30" fill="#277d71"/><rect x="446" y="379" width="27.6" height="30" fill="#769cc5"/><rect x="473.6" y="379" width="9.2" height="30" fill="#9d7fbb"/><rect x="482.8" y="379" width="9.2" height="30" fill="#dd9d58"/><rect x="400" y="379" width="92" height="30" fill="url(#sheen)"/></g><text x="64" y="496" font-size="16" fill="#61736c">Main agents + workers · Retained local history · Tokens, not cost</text></g></svg>

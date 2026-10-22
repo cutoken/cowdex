@@ -1,5 +1,6 @@
 ---
 source: cli/src/worker_cli_tests.rs
+assertion_line: 7
 expression: "MultitoolCli::command().term_width(100).render_help().to_string()"
 ---
 Codex CLI
@@ -107,6 +108,10 @@ Options:
           to the model (no per‑call approval)
       --no-alt-screen
           Disable alternate screen mode
+      --export-usage [<INTERVAL>]
+          Export a project token chart for this interval (e.g. 24h, 7d, 1month)
+      --usage-output <PNG>
+          Where to save the usage PNG (default: cowdex-usage-<interval>.png)
   -h, --help
           Print help (see more with '--help')
   -V, --version
