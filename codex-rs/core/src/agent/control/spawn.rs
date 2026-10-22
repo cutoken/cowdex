@@ -311,6 +311,16 @@ impl AgentControl {
             .get_resumed_session_sources()
             .unwrap_or((stored_source, None));
         let provider_override = crate::session::session_flags_select_model_provider(&config);
+        if provider_override
+            && let Some(boss) = config
+                .multi_agent_v2
+                .boss_mode
+                .clone()
+                .filter(|boss| boss.enabled)
+        {
+            crate::agent::worker_model::apply(&mut config, &boss)
+                .map_err(CodexErr::InvalidRequest)?;
+        }
         let runtime_model_settings = (
             config.model.clone(),
             config.model_reasoning_effort.clone(),
@@ -355,6 +365,15 @@ impl AgentControl {
                 })?;
         }
         // A saved provider may be declared by the agent's role rather than its parent.
+        if !provider_override && matches!(stored_model_provider.as_str(), "zai" | "openrouter") {
+            crate::agent::worker_model::ensure_provider(&mut config, &stored_model_provider)
+                .map_err(CodexErr::InvalidRequest)?;
+            config
+                .features
+                .enable(codex_features::Feature::StandaloneWebSearch)
+                .map_err(|error| CodexErr::InvalidRequest(error.to_string()))?;
+            config.service_tier = None;
+        }
         if provider_override || !config.model_providers.contains_key(&stored_model_provider) {
             let (model, reasoning_effort, provider_id, provider, service_tier) =
                 runtime_model_settings;

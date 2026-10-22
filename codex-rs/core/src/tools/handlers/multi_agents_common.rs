@@ -291,13 +291,13 @@ pub(crate) fn apply_spawn_agent_runtime_overrides(
             FunctionCallError::RespondToModel(format!("permission_profile is invalid: {err}"))
         })?;
     config.multi_agent_v2 = worker_policy.clone();
-    if crate::session::session_flags_select_model_provider(&turn.config) {
+    if let Some(boss) = worker_policy.boss_mode.as_ref().filter(|boss| boss.enabled) {
+        crate::agent::worker_model::apply(config, boss)
+            .map_err(FunctionCallError::RespondToModel)?;
+    } else if crate::session::session_flags_select_model_provider(&turn.config) {
         config.model = Some(turn.model_info.slug.clone());
         config.model_provider_id = turn.config.model_provider_id.clone();
         config.model_provider = turn.provider.info().clone();
-    } else if let Some(boss) = worker_policy.boss_mode.as_ref().filter(|boss| boss.enabled) {
-        config.model = Some(boss.model.clone());
-        config.model_reasoning_effort = Some(boss.reasoning_effort.clone());
     } else if worker_policy.astra_ultra_low {
         config.model = Some("gpt-6-astra".to_string());
         config.model_reasoning_effort = Some(ReasoningEffort::Low);
@@ -321,7 +321,15 @@ pub(crate) async fn apply_requested_spawn_agent_model_overrides(
     requested_model: Option<&str>,
     requested_reasoning_effort: Option<ReasoningEffort>,
 ) -> Result<(), FunctionCallError> {
-    if crate::session::session_flags_select_model_provider(&turn.config) {
+    let boss = worker_policy.boss_mode.as_ref().filter(|boss| boss.enabled);
+    if let Some(boss) = boss {
+        crate::agent::worker_model::apply(config, boss)
+            .map_err(FunctionCallError::RespondToModel)?;
+        if matches!(config.model_provider_id.as_str(), "zai" | "openrouter") {
+            return Ok(());
+        }
+    }
+    if boss.is_none() && crate::session::session_flags_select_model_provider(&turn.config) {
         config.model = Some(turn.model_info.slug.clone());
         config.model_provider_id = turn.config.model_provider_id.clone();
         config.model_provider = turn.provider.info().clone();
@@ -341,7 +349,6 @@ pub(crate) async fn apply_requested_spawn_agent_model_overrides(
         return Ok(());
     }
 
-    let boss = worker_policy.boss_mode.as_ref().filter(|boss| boss.enabled);
     let requested_model = if let Some(boss) = boss {
         Some(boss.model.as_str())
     } else if worker_policy.astra_ultra_low {
@@ -424,6 +431,10 @@ pub(crate) async fn apply_spawn_agent_service_tier(
     parent_service_tier: Option<&str>,
     requested_service_tier: Option<&str>,
 ) -> Result<(), FunctionCallError> {
+    if matches!(config.model_provider_id.as_str(), "zai" | "openrouter") {
+        config.service_tier = None;
+        return Ok(());
+    }
     let candidate_service_tiers = [
         config.service_tier.clone(),
         requested_service_tier.map(str::to_string),
@@ -494,11 +505,14 @@ pub(crate) async fn apply_spawn_agent_role(
     if let Some(boss) = config
         .multi_agent_v2
         .boss_mode
-        .as_ref()
+        .clone()
         .filter(|boss| boss.enabled)
     {
-        config.model = Some(boss.model.clone());
-        config.model_reasoning_effort = Some(boss.reasoning_effort.clone());
+        crate::agent::worker_model::apply(config, &boss)
+            .map_err(FunctionCallError::RespondToModel)?;
+        if matches!(config.model_provider_id.as_str(), "zai" | "openrouter") {
+            return Ok(());
+        }
     }
     if config.model == previous_model && config.model_reasoning_effort == previous_reasoning_effort
     {

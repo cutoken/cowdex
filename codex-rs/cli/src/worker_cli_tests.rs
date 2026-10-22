@@ -52,3 +52,18 @@ fn bare_worker_before_a_subcommand_keeps_its_default() {
     assert_eq!(exec.boss.as_deref(), Some("sol"));
     assert!(exec.command.is_some());
 }
+
+#[test]
+fn resume_and_fork_accept_provider_qualified_workers() {
+    for command in ["resume", "fork"] {
+        for worker in ["zai:glm-5.3:max", "openrouter:deepseek/model:free:high"] {
+            let cli = MultitoolCli::parse_from(["cowdex", command, "--last", "--worker", worker]);
+            let shared = match cli.subcommand.unwrap() {
+                Subcommand::Resume(cmd) => cmd.config_overrides.0.shared.into_inner(),
+                Subcommand::Fork(cmd) => cmd.config_overrides.0.shared.into_inner(),
+                _ => unreachable!(),
+            };
+            assert_eq!(shared.boss.as_deref(), Some(worker));
+        }
+    }
+}

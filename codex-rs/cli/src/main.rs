@@ -222,12 +222,8 @@ enum Subcommand {
     StdioToUds(StdioToUdsCommand),
 
     /// Internal: resolve a provider key from the environment or Cowdex credentials.
-    #[clap(
-        hide = true,
-        name = "internal-provider-credential",
-        alias = "internal-cando-credential"
-    )]
-    InternalCandoCredential(provider_credentials::Command),
+    #[clap(hide = true, name = "internal-provider-credential")]
+    InternalProviderCredential(provider_credentials::Command),
 
     /// [EXPERIMENTAL] Run the standalone exec-server service.
     ExecServer(ExecServerCommand),
@@ -1627,7 +1623,7 @@ async fn cli_main(
             let socket_path = cmd.socket_path;
             codex_stdio_to_uds::run(socket_path.as_path()).await?;
         }
-        Some(Subcommand::InternalCandoCredential(cmd)) => {
+        Some(Subcommand::InternalProviderCredential(cmd)) => {
             provider_credentials::run(&cmd)?;
         }
         Some(Subcommand::ExecServer(cmd)) => {
@@ -2304,7 +2300,7 @@ fn unsupported_subcommand_name_for_strict_config(
         Some(Subcommand::Apply(_)) => Some("apply"),
         Some(Subcommand::ResponsesApiProxy(_)) => Some("responses-api-proxy"),
         Some(Subcommand::StdioToUds(_)) => Some("stdio-to-uds"),
-        Some(Subcommand::InternalCandoCredential(_)) => Some("internal-cando-credential"),
+        Some(Subcommand::InternalProviderCredential(_)) => Some("internal-provider-credential"),
         Some(Subcommand::Features(_)) => Some("features"),
     }
 }

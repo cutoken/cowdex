@@ -171,6 +171,52 @@ fn worker_options_merge_across_exec_and_resume() {
     );
 }
 
+#[test]
+fn external_workers_preserve_the_selected_lead_and_override_inherited_workers() {
+    for (selector, model, effort) in [
+        ("zai:glm-5.3", "zai:glm-5.3", "medium"),
+        ("zai:glm-5.3:max", "zai:glm-5.3", "max"),
+        (
+            "openrouter:deepseek/model:free:high",
+            "openrouter:deepseek/model:free",
+            "high",
+        ),
+    ] {
+        for lead in ["--ultra", "--zai", "--openrouter"] {
+            let mut cli = TestCli::parse_from(["cowdex", lead, "--worker", selector]);
+            cli.shared.take_config_overrides(&mut cli.overrides);
+            let expected_lead = match lead {
+                "--zai" => "glm-5.3",
+                "--openrouter" => "deepseek/deepseek-v4.1-flash",
+                _ => "gpt-6-astra",
+            };
+            assert_eq!(cli.shared.model.as_deref(), Some(expected_lead));
+            assert!(cli.overrides.raw_overrides.contains(&format!("features.multi_agent_v2.boss_mode={{enabled=true,model=\"{model}\",reasoning_effort=\"{effort}\"}}")));
+        }
+        let mut root = TestCli::parse_from(["cowdex", "--worker", "sol:low"]);
+        let child = TestCli::parse_from(["cowdex", "--zai", "--worker", selector]);
+        root.shared.apply_subcommand_overrides(child.shared);
+        root.shared.take_config_overrides(&mut root.overrides);
+        assert!(root.overrides.raw_overrides.contains(&format!("features.multi_agent_v2.boss_mode={{enabled=true,model=\"{model}\",reasoning_effort=\"{effort}\"}}")));
+        for inherit_exec in [false, true] {
+            let root = TestCli::parse_from(["cowdex", "--worker", selector]);
+            let child = TestCli::parse_from(["cowdex", "--zai"]);
+            let mut merged = if inherit_exec {
+                let mut merged = child.shared;
+                merged.inherit_exec_root_options(&root.shared);
+                merged
+            } else {
+                let mut merged = root.shared;
+                merged.apply_subcommand_overrides(child.shared);
+                merged
+            };
+            let mut overrides = CliConfigOverrides::default();
+            merged.take_config_overrides(&mut overrides);
+            assert!(overrides.raw_overrides.contains(&format!("features.multi_agent_v2.boss_mode={{enabled=true,model=\"{model}\",reasoning_effort=\"{effort}\"}}")));
+        }
+    }
+}
+
 fn expected_preset_overrides(enabled_setting: Option<&str>) -> Vec<String> {
     std::iter::once(r#"model_reasoning_effort="ultra""#.to_string())
         .chain(

@@ -22,6 +22,35 @@ pub(super) async fn validate_boss_mode(
     if !boss.enabled {
         return Ok(());
     }
+    let selected =
+        codex_protocol::worker_model::WorkerModel::parse(&boss.model).map_err(|error| {
+            codex_config::ConstraintError::InvalidValue {
+                field_name: "boss_mode.model",
+                candidate: boss.model.clone(),
+                allowed: error,
+                requirement_source: codex_config::RequirementSource::Unknown,
+            }
+        })?;
+    if selected.provider.is_some() {
+        use codex_protocol::openai_models::ReasoningEffort;
+        return if matches!(
+            boss.reasoning_effort,
+            ReasoningEffort::Low
+                | ReasoningEffort::Medium
+                | ReasoningEffort::High
+                | ReasoningEffort::XHigh
+                | ReasoningEffort::Max
+        ) {
+            Ok(())
+        } else {
+            Err(codex_config::ConstraintError::InvalidValue {
+                field_name: "boss_mode.reasoning_effort",
+                candidate: boss.reasoning_effort.to_string(),
+                allowed: "low, medium, high, xhigh, max".to_string(),
+                requirement_source: codex_config::RequirementSource::Unknown,
+            })
+        };
+    }
     let config = session.get_config().await;
     let models = session
         .services

@@ -47,6 +47,7 @@ Cowdex can then see your boards and files on AgentCron.
 | ----------------------------- | ---------------------------------------------------------------------------------------- |
 | `cowdex --ultra-effort high`  | Run Ultra at your chosen effort: low, medium, high, xhigh or max, where supported.       |
 | `cowdex --worker sol:medium`  | Fix the worker model and effort; bare `--worker` defaults to Sol/medium.                 |
+| `/limit_agents 8`             | Set this session's concurrent agent limit, including the main agent; omit the number to show it. |
 | `cowdex --effort high`        | Set the main agent's reasoning effort.                                                   |
 | `cowdex --max-context`        | Use the main model's maximum supported context window.                                   |
 | `cowdex --compact-with-lower` | Use cheaper compaction for Astra and Sol at high effort or above.                        |
@@ -61,8 +62,14 @@ Cowdex can then see your boards and files on AgentCron.
 
 Bring your OpenRouter API account or Z.ai Coding Plan for the main agent and its workers. Set `OPENROUTER_API_KEY` or `ZAI_API_KEY`, then start with `--openrouter` or `--zai`. Use the same flag with `cowdex resume` to continue an existing conversation.
 
+Keep your main model and choose workers separately with `--worker zai:glm-5.3` or `--worker openrouter:deepseek/deepseek-v4.1-flash:high`. The final effort is optional and defaults to medium; provider keys can also be saved with `cowdex login --provider zai --with-api-key` (or `openrouter`).
+
+Change worker defaults during a session with `/worker <model> [effort]`.
+
 ## Vault
 
 The vault is a self-contained binary with no Python dependency. Run `cowdex-vault`, add your keys, then use `/vault attach` inside Cowdex. [Vault setup](cowdex-vault/README.md).
+
+Codex Apps are off by default; enable them with `cowdex --enable apps`.
 
 [Build from source](scripts/codex_package/README.md).

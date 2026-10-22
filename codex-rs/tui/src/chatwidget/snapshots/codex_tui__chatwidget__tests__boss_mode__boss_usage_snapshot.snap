@@ -1,7 +1,7 @@
 ---
 source: tui/src/chatwidget/boss_mode_tests.rs
-assertion_line: 133
+assertion_line: 159
 expression: "lines_to_single_string(&cells[0])"
 ---
 • Boss off · workers follow the lead
-Use /boss <model> [effort], /boss on, or /boss off. Models: astra, sol, luna, or a full model ID. Applies to new workers; /model changes the lead.
+Use /worker <model> [effort], /worker on, or /worker off. Models: sol, astra, luna, a full ID, or provider:model. Applies to new workers; /model changes the lead.

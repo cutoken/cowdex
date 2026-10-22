@@ -3,6 +3,32 @@ use crate::chatwidget::boss_mode::parse_boss_command;
 use codex_protocol::protocol::BossModeSettings;
 use pretty_assertions::assert_eq;
 
+#[test]
+fn external_worker_selection_can_be_disabled_and_reenabled_without_the_openai_catalog() {
+    for command in ["zai:glm-5.3 high", "openrouter:deepseek/model:free:high"] {
+        let enabled = parse_boss_command(command, /*current*/ None, &[])
+            .unwrap()
+            .unwrap();
+        assert_eq!(enabled.reasoning_effort, ReasoningEffortConfig::High);
+        let disabled = parse_boss_command("off", Some(&enabled), &[])
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            disabled,
+            BossModeSettings {
+                enabled: false,
+                ..enabled.clone()
+            }
+        );
+        assert_eq!(
+            parse_boss_command("on", Some(&disabled), &[]),
+            Ok(Some(enabled))
+        );
+    }
+    assert!(parse_boss_command("zai:", /*current*/ None, &[]).is_err());
+    assert!(parse_boss_command("zai:glm-5.3 ultra", /*current*/ None, &[]).is_err());
+}
+
 #[tokio::test]
 async fn boss_commands_validate_and_preserve_selection() {
     let (chat, _rx, _ops) = make_chatwidget_manual(/*model_override*/ None).await;

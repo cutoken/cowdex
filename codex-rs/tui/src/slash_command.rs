@@ -13,6 +13,7 @@ pub enum SlashCommand {
     // DO NOT ALPHA-SORT! Enum order is presentation order in the popup, so
     // more frequently used commands should be listed first.
     Model,
+    #[strum(to_string = "worker", serialize = "boss")]
     Boss,
     #[strum(serialize = "limit_agents")]
     LimitAgents,
@@ -307,6 +308,13 @@ mod tests {
     #[test]
     fn clean_alias_parses_to_stop_command() {
         assert_eq!(SlashCommand::from_str("clean"), Ok(SlashCommand::Stop));
+    }
+
+    #[test]
+    fn worker_is_canonical_and_boss_remains_an_alias() {
+        assert_eq!(SlashCommand::Boss.command(), "worker");
+        assert_eq!(SlashCommand::from_str("worker"), Ok(SlashCommand::Boss));
+        assert_eq!(SlashCommand::from_str("boss"), Ok(SlashCommand::Boss));
     }
 
     #[test]

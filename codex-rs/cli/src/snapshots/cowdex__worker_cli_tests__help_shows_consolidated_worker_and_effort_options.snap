@@ -67,8 +67,8 @@ Options:
           Main agent reasoning effort: low, medium, high, xhigh, or max
       --ultra
           Enable agent teams with the selected model (defaults to GPT-6 Astra)
-      --worker [<MODEL[:EFFORT]>]
-          Enable Boss mode with fixed workers (defaults to sol:medium). Change live with /boss
+      --worker [<MODEL>]
+          Fix workers to [PROVIDER:]MODEL[:EFFORT] (default sol:medium). Change live with /worker
       --max-context
           Use the model's maximum context window for the main agent
       --compact-with-lower

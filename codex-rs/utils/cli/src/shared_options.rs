@@ -5,6 +5,7 @@ use crate::SandboxModeCliArg;
 use clap::Args;
 use codex_protocol::config_types::ProfileV2Name;
 use codex_protocol::openai_models::ReasoningEffort;
+use codex_protocol::worker_model::WorkerModel;
 use std::path::PathBuf;
 
 fn parse_ultra_effort(value: &str) -> Result<ReasoningEffort, String> {
@@ -19,13 +20,7 @@ fn parse_ultra_effort(value: &str) -> Result<ReasoningEffort, String> {
 }
 
 fn parse_worker(value: &str) -> Result<String, String> {
-    let (model, effort) = value.split_once(':').unwrap_or((value, ""));
-    if model.is_empty() && effort.is_empty() && !value.is_empty() {
-        return Err("expected MODEL[:EFFORT], MODEL, or :EFFORT".to_string());
-    }
-    if !effort.is_empty() {
-        parse_ultra_effort(effort)?;
-    }
+    WorkerModel::parse(value)?;
     Ok(value.to_string())
 }
 
@@ -58,8 +53,8 @@ pub struct SharedCliOptions {
     )]
     pub astra_ultra: bool,
 
-    /// Enable Boss mode with fixed workers (defaults to sol:medium). Change live with /boss.
-    #[arg(long = "worker", alias = "boss", value_name = "MODEL[:EFFORT]", num_args = 0..=1, default_missing_value = "sol", value_parser = parse_worker, conflicts_with_all = ["zai", "openrouter", "oss", "astra_ultra_low", "astra_ultra_miser", "astra_boss", "astra_boss_low", "astra_boss_miser"])]
+    /// Fix workers to [PROVIDER:]MODEL[:EFFORT] (default sol:medium). Change live with /worker.
+    #[arg(long = "worker", alias = "boss", value_name = "MODEL", num_args = 0..=1, default_missing_value = "sol", value_parser = parse_worker, conflicts_with_all = ["oss", "astra_ultra_low", "astra_ultra_miser", "astra_boss", "astra_boss_low", "astra_boss_miser"])]
     pub boss: Option<String>,
 
     /// Worker reasoning effort in Boss mode (defaults to medium).
@@ -198,10 +193,6 @@ impl SharedCliOptions {
     pub fn take_config_overrides(&mut self, overrides: &mut CliConfigOverrides) {
         let zai = self.zai;
         let openrouter = self.openrouter;
-        if zai || openrouter {
-            self.boss = None;
-            self.worker_effort = None;
-        }
         if zai {
             self.model = Some("glm-5.3".to_string());
             add_external_provider_overrides(
@@ -275,20 +266,16 @@ impl SharedCliOptions {
             self.astra_boss_miser = false;
         }
         if let Some(model) = self.boss.take() {
-            let (model, effort) = model.split_once(':').unwrap_or((&model, ""));
-            let model = if model.is_empty() { "sol" } else { model };
-            let model = match model {
-                "astra" => "gpt-6-astra",
-                "sol" => "gpt-6.1-sol",
-                "luna" => "gpt-6-luna",
-                model => model,
-            };
-            let model = toml::Value::String(model.to_string());
-            let effort = if effort.is_empty() {
-                self.worker_effort.take().unwrap_or(ReasoningEffort::Medium)
-            } else {
-                parse_ultra_effort(effort).expect("worker effort validated by clap")
-            };
+            #[expect(
+                clippy::expect_used,
+                reason = "Clap validates worker selectors before use"
+            )]
+            let selected = WorkerModel::parse(&model).expect("worker selector validated by clap");
+            let model = toml::Value::String(selected.qualified_model());
+            let effort = selected
+                .effort
+                .or(self.worker_effort.take())
+                .unwrap_or(ReasoningEffort::Medium);
             overrides.raw_overrides.push(format!(
                 "features.multi_agent_v2.boss_mode={{enabled=true,model={model},reasoning_effort=\"{effort}\"}}"
             ));
@@ -399,7 +386,13 @@ impl SharedCliOptions {
             add_dir: root_add_dir,
         } = root;
 
-        if boss.is_none() && !*zai && !*openrouter {
+        if boss.is_none()
+            && (!*zai && !*openrouter
+                || root_boss
+                    .as_deref()
+                    .and_then(|value| WorkerModel::parse(value).ok())
+                    .is_some_and(|worker| worker.provider.is_some()))
+        {
             boss.clone_from(root_boss);
         }
         if worker_effort.is_none() {
@@ -532,6 +525,15 @@ impl SharedCliOptions {
             self.openrouter = false;
         }
         if zai || openrouter {
+            if self
+                .boss
+                .as_deref()
+                .and_then(|value| WorkerModel::parse(value).ok())
+                .is_none_or(|worker| worker.provider.is_none())
+            {
+                self.boss = None;
+                self.worker_effort = None;
+            }
             self.model = None;
             self.astra_ultra = astra_ultra;
             self.astra_ultra_low = false;

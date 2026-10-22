@@ -3,8 +3,9 @@
 use super::*;
 use codex_protocol::openai_models::ModelPreset;
 use codex_protocol::protocol::BossModeSettings;
+use codex_protocol::worker_model::WorkerModel;
 
-const USAGE: &str = "Use /boss <model> [effort], /boss on, or /boss off. Models: astra, sol, luna, or a full model ID. Applies to new workers; /model changes the lead.";
+const USAGE: &str = "Use /worker <model> [effort], /worker on, or /worker off. Models: sol, astra, luna, a full ID, or provider:model. Applies to new workers; /model changes the lead.";
 
 impl ChatWidget {
     pub(super) fn dispatch_boss_command(&mut self, args: &str) {
@@ -13,7 +14,7 @@ impl ChatWidget {
             Ok(Some(settings)) => {
                 let Some(thread_id) = self.thread_id else {
                     self.add_error_message(
-                        "The session is starting. Try /boss again shortly.".to_string(),
+                        "The session is starting. Try /worker again shortly.".to_string(),
                     );
                     return;
                 };
@@ -60,21 +61,35 @@ pub(super) fn parse_boss_command(
         }
         ["on"] => settings.enabled = true,
         [model] | [model, _] => {
-            settings.model = match *model {
-                "astra" => "gpt-6-astra",
-                "sol" => "gpt-6.1-sol",
+            let model = match *model {
                 "terra" => "gpt-5.6-terra",
-                "luna" => "gpt-6-luna",
                 model => model,
-            }
-            .to_string();
-            let effort = words.get(1).copied().unwrap_or("medium");
-            settings.reasoning_effort = effort
-                .parse()
-                .map_err(|_| format!("Unknown reasoning effort '{effort}'. {USAGE}"))?;
+            };
+            let selected = WorkerModel::parse(model)?;
+            settings.model = selected.qualified_model();
+            settings.reasoning_effort = match words.get(1) {
+                Some(effort) => effort
+                    .parse()
+                    .map_err(|_| format!("Unknown reasoning effort '{effort}'. {USAGE}"))?,
+                None => selected.effort.unwrap_or(ReasoningEffortConfig::Medium),
+            };
             settings.enabled = true;
         }
         _ => return Err(USAGE.to_string()),
+    }
+    if WorkerModel::parse(&settings.model)?.provider.is_some() {
+        return if matches!(
+            settings.reasoning_effort,
+            ReasoningEffortConfig::Low
+                | ReasoningEffortConfig::Medium
+                | ReasoningEffortConfig::High
+                | ReasoningEffortConfig::XHigh
+                | ReasoningEffortConfig::Max
+        ) {
+            Ok(Some(settings))
+        } else {
+            Err("Worker effort must be low, medium, high, xhigh, or max.".to_string())
+        };
     }
     let model = models
         .iter()

@@ -614,7 +614,12 @@ impl Session {
                 && let Some(settings) = boss_mode.as_mut()
             {
                 if let Some(model) = config.model.clone() {
-                    settings.model = model;
+                    settings.model =
+                        if matches!(config.model_provider_id.as_str(), "zai" | "openrouter") {
+                            format!("{}:{model}", config.model_provider_id)
+                        } else {
+                            model
+                        };
                 }
                 if let Some(reasoning_effort) = config.model_reasoning_effort.clone() {
                     settings.reasoning_effort = reasoning_effort;
