@@ -1,0 +1,6 @@
+---
+source: cli/tests/usage_export.rs
+assertion_line: 43
+expression: "String::from_utf8_lossy(&result.stdout).replace(home.path().to_string_lossy().as_ref(),\n\"<output_dir>\").replace('\\\\', \"/\")"
+---
+Saved <output_dir>/cowdex-usage-24h.png (1 projects, 120 tokens).

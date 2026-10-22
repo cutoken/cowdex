@@ -66,6 +66,7 @@ pub(crate) fn run(options: Options, end: DateTime<Utc>) -> anyhow::Result<()> {
     let output = options
         .output
         .unwrap_or_else(|| PathBuf::from(format!("cowdex-usage-{}.png", interval.label)));
+    let output = std::path::absolute(output)?;
     anyhow::ensure!(
         output.extension().is_some_and(|ext| ext
             .to_str()

@@ -33,7 +33,19 @@ fn usage_export_runs_offline_with_default_and_explicit_intervals() -> Result<()>
         .current_dir(home.path())
         .arg("--export-usage");
     let result = command.assert().success().get_output().clone();
-    assert!(String::from_utf8_lossy(&result.stdout).contains("1 projects, 120 tokens"));
+    assert_eq!(
+        String::from_utf8_lossy(&result.stdout),
+        format!(
+            "Saved {} (1 projects, 120 tokens).\n",
+            home.path().join("cowdex-usage-24h.png").display()
+        )
+    );
+    insta::assert_snapshot!(
+        "usage_export_saved_path",
+        String::from_utf8_lossy(&result.stdout)
+            .replace(home.path().to_string_lossy().as_ref(), "<output_dir>")
+            .replace('\\', "/")
+    );
     let stderr = String::from_utf8_lossy(&result.stderr);
     let progress: Vec<_> = stderr
         .lines()
@@ -50,10 +62,15 @@ fn usage_export_runs_offline_with_default_and_explicit_intervals() -> Result<()>
     let output = home.path().join("month.png");
     assert_cmd::Command::new(&binary)
         .env("CODEX_HOME", home.path())
+        .current_dir(home.path())
         .args(["--export-usage", "1month", "--usage-output"])
-        .arg(&output)
+        .arg("month.png")
         .assert()
-        .success();
+        .success()
+        .stdout(predicates::str::contains(format!(
+            "Saved {}",
+            output.display()
+        )));
     assert!(output.is_file());
     assert_cmd::Command::new(binary)
         .env("CODEX_HOME", home.path())
