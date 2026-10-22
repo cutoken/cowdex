@@ -1,6 +1,6 @@
 # 🐮 Cowdex
 
-Cowdex is a Codex fork focused on saving tokens and a slower, deliberate release cycle to reduce exposure to upstream regressions.
+Cowdex is a Codex fork built to save tokens, with a slower release cycle to avoid chasing daily upstream regressions.
 
 ## Install
 
@@ -11,82 +11,58 @@ cowdex login
 cowdex
 ```
 
-Packages include matching support binaries for Linux, macOS and Windows, on x64 and ARM64. Installation and updates use the platform shell, with no Python, Node.js, or Go runtime required. On Windows, run:
+On Windows:
 
 ```powershell
 irm https://raw.githubusercontent.com/cutoken/cowdex/main/scripts/install.ps1 | iex
 ```
 
-Run `cowdex update` or the installer again to update. Cowdex also checks for new releases and offers an update prompt.
+Run `cowdex update` to update. Cowdex also prompts when a new release is available.
 
-Project management for your agents: [AgentCron](https://agentcron.ai).
+PS: Cowdex works great with [AgentCron project management software](https://agentcron.ai).
 
 ```sh
-cowdex --ultra
-cowdex --worker sol:medium
-cowdex --model gpt-6.1-sol --effort high --worker luna:low
-cowdex resume --zai
-cowdex --openrouter
+cowdex mcp add agentcron --url https://api.agentcron.ai/api/mcp
+cowdex mcp login agentcron
 ```
 
-`--worker` enables Boss mode. Omit its value for `sol:medium`, or omit either part: `sol` uses medium effort; `:high` uses Sol. Without `--model` or `--effort`, Boss keeps its existing main-agent defaults: Astra at medium effort. Older switches remain accepted.
+Cowdex can then see your boards and files on AgentCron.
 
 ## Features
 
-- **Worker events.** Agents wait for worker completion instead of constantly checking status.
+- **Worker events:** Stop wasting tokens on repeated status checks.
+- **Boss mode:** Keep a strong main agent and use cheaper workers.
+- **Ultra effort:** Use Ultra without being forced to max effort.
+- **Engineering guardrails:** Less overengineering, test bloat and unrelated work.
+- **Automatic retries:** Less babysitting after “Selected model is at capacity” and other transient errors.
+- **Token counts:** See cached input, reasoning, output and total token usage live.
+- **Lighter storage:** Less SSD churn from logs and oversized session files.
+- **Keepwarm:** Keep extra accounts warm without interrupting your current login.
+- **Vault:** Let agents use API keys without pasting them into chats.
+- **Provider switching:** Continue the same conversation across providers.
 
-  Fewer wasted tokens on polling.
+## New functionality
 
-- **Boss mode.** Choose fixed worker models and effort with `--worker sol:medium`.
+| Command                       | What it does                                                                             |
+| ----------------------------- | ---------------------------------------------------------------------------------------- |
+| `cowdex --ultra-effort high`  | Run Ultra at your chosen effort: low, medium, high, xhigh or max, where supported.       |
+| `cowdex --worker sol:medium`  | Fix the worker model and effort; bare `--worker` defaults to Sol/medium.                 |
+| `cowdex --effort high`        | Set the main agent's reasoning effort.                                                   |
+| `cowdex --max-context`        | Use the main model's maximum supported context window.                                   |
+| `cowdex --compact-with-lower` | Use cheaper compaction for Astra and Sol at high effort or above.                        |
+| `cowdex --openrouter`         | Work through your OpenRouter account.                                                    |
+| `cowdex --zai`                | Work through your Z.ai Coding Plan.                                                      |
+| `cowdex keepwarm`             | Sign into another account and keep it active.                                            |
+| `cowdex cleanup`              | Shrink session files and clear stale subagents and logs while preserving resume support. |
+| `cowdex update`               | Install the latest Cowdex release.                                                       |
+| `cowdex-vault`                | Open the credential vault manager.                                                       |
 
-  Spend less on delegated work while keeping a stronger main agent.
+## Use OpenRouter or Z.ai
 
-- **Ultra.** Let the main agent choose workers, with every model-supported effort level from low through max.
+Bring your OpenRouter API account or Z.ai Coding Plan for the main agent and its workers. Set `OPENROUTER_API_KEY` or `ZAI_API_KEY`, then start with `--openrouter` or `--zai`. Use the same flag with `cowdex resume` to continue an existing conversation.
 
-  Match reasoning cost to the task.
+## Vault
 
-- **Engineering guardrails.** Instructions discourage unnecessary abstractions, redundant tests, and unrelated changes.
+The vault is a self-contained binary with no Python dependency. Run `cowdex-vault`, add your keys, then use `/vault attach` inside Cowdex. [Vault setup](cowdex-vault/README.md).
 
-  Less scope creep and rework.
-
-- **OpenRouter and Z.ai.** Use either provider for the main agent and its workers; resume conversations across providers.
-
-  Keep working with your preferred provider.
-
-- **Automatic retries.** Recover from model, server, network, and stream failures, including “Selected model is at capacity.” Server errors retry every 60 seconds without a retry limit; closed WebSockets fall back to HTTPS.
-
-  Less babysitting when providers have a bad day.
-
-- **Live token counts.** Track total tokens (`T`), cached and uncached input (`CI`/`NI`), reasoning output (`OUT_R`), and total output (`OUT_T`).
-
-  See where your tokens go.
-
-- **Lighter storage.** Lower logging overhead and bounded history caches. `/cleanup` shrinks session files while preserving resume support, backs up originals, removes stale subagents, and protects running sessions.
-
-  Less SSD churn and runaway disk usage.
-
-- **Keepwarm.** `cowdex keepwarm` signs into additional accounts and runs a research task without replacing your current login.
-
-  Keep accounts warm without disrupting your session.
-
-## Provider keys
-
-Use `ZAI_API_KEY` or `OPENROUTER_API_KEY`, or save a key through stdin:
-
-```sh
-printenv ZAI_API_KEY | cowdex login --provider zai --with-api-key
-printenv OPENROUTER_API_KEY | cowdex login --provider openrouter --with-api-key
-```
-
-Saved keys use `$CODEX_HOME/provider-keys.json`. Settings and sessions default to `~/.codex`; set `CODEX_HOME` for separate state. Cowdex installs separately from regular Codex and preserves running installations when updating.
-
-## Build
-
-Use Rust 1.95.0, Go 1.27.3, and Python 3.11+:
-
-```sh
-python3 scripts/build_codex_package.py --variant cowdex --cargo-profile release \
-  --package-dir dist/package --archive-output dist/cowdex-package.tar.gz
-```
-
-See the [release workflow](.github/workflows/cowdex-release.yml) for platform setup. macOS packages are not signed or notarized.
+[Build from source](scripts/codex_package/README.md).
