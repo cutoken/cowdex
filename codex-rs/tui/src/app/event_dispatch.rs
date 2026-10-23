@@ -1051,7 +1051,11 @@ impl App {
                 self.chat_widget.apply_file_search_result(query, matches);
             }
             AppEvent::RefreshRateLimits { origin } => {
-                self.refresh_rate_limits(app_server, origin);
+                if let RateLimitRefreshOrigin::StatusCommand { request_id } = origin {
+                    self.show_account_status(app_server, request_id).await;
+                } else {
+                    self.refresh_rate_limits(app_server, origin);
+                }
             }
             AppEvent::RefreshTokenActivity { request_id } => {
                 self.refresh_token_activity(app_server, request_id);

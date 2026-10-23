@@ -1048,6 +1048,7 @@ impl AccountRequestProcessor {
     ) -> Result<GetAccountResponse, JSONRPCErrorError> {
         let do_refresh = params.refresh_token;
 
+        self.auth_manager.reload_if_available().await;
         self.refresh_token_if_requested(do_refresh).await;
 
         let config = self.load_latest_config().await;

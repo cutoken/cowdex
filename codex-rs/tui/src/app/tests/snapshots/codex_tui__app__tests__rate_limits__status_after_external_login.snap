@@ -1,0 +1,5 @@
+---
+source: tui/src/app/tests/rate_limits.rs
+expression: account_line.trim()
+---
+│  Account:              second@example.com (Pro)                      │

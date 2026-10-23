@@ -2677,6 +2677,61 @@ async fn get_account_with_chatgpt() -> Result<()> {
 }
 
 #[tokio::test]
+async fn get_account_reloads_external_login_without_token_refresh() -> Result<()> {
+    let codex_home = TempDir::new()?;
+    create_config_toml(
+        codex_home.path(),
+        CreateConfigTomlParams {
+            requires_openai_auth: Some(true),
+            ..Default::default()
+        },
+    )?;
+    write_chatgpt_auth(
+        codex_home.path(),
+        ChatGptAuthFixture::new("access-first")
+            .email("first@example.com")
+            .account_id("first-account")
+            .plan_type("plus"),
+        AuthCredentialsStoreMode::File,
+    )?;
+    let mut mcp = TestAppServer::builder()
+        .with_codex_home(codex_home.path())
+        .without_auto_env()
+        .with_env_overrides(&[("OPENAI_API_KEY", None)])
+        .build_initialized_with_timeout(DEFAULT_READ_TIMEOUT)
+        .await?;
+    assert_eq!(
+        read_account(&mut mcp).await?,
+        GetAccountResponse {
+            account: Some(Account::Chatgpt {
+                email: Some("first@example.com".to_string()),
+                plan_type: AccountPlanType::Plus,
+            }),
+            requires_openai_auth: true,
+        }
+    );
+    write_chatgpt_auth(
+        codex_home.path(),
+        ChatGptAuthFixture::new("access-second")
+            .email("second@example.com")
+            .account_id("second-account")
+            .plan_type("pro"),
+        AuthCredentialsStoreMode::File,
+    )?;
+    assert_eq!(
+        read_account(&mut mcp).await?,
+        GetAccountResponse {
+            account: Some(Account::Chatgpt {
+                email: Some("second@example.com".to_string()),
+                plan_type: AccountPlanType::Pro,
+            }),
+            requires_openai_auth: true,
+        }
+    );
+    Ok(())
+}
+
+#[tokio::test]
 async fn get_account_with_business_prolite_returns_plan_type() -> Result<()> {
     let codex_home = TempDir::new()?;
     create_config_toml(

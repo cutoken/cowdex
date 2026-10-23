@@ -389,3 +389,80 @@ async fn post_hard_stop_rate_limit_read_clears_recovered_workspace_limit() -> Re
     app_server.shutdown().await?;
     Ok(())
 }
+
+#[tokio::test]
+async fn status_refresh_reloads_external_account_before_rendering() -> Result<()> {
+    use app_test_support::ChatGptAuthFixture;
+    use app_test_support::write_chatgpt_auth;
+    use codex_config::types::AuthCredentialsStoreMode;
+
+    let (mut app, mut rx, _op_rx) = make_test_app_with_channels().await;
+    let codex_home = app.chat_widget.config_ref().codex_home.to_path_buf();
+    write_chatgpt_auth(
+        &codex_home,
+        ChatGptAuthFixture::new("first-access")
+            .email("first@example.com")
+            .account_id("first-account")
+            .plan_type("plus"),
+        AuthCredentialsStoreMode::File,
+    )
+    .expect("write external login fixture");
+    let mut app_server =
+        crate::start_embedded_app_server_for_picker(app.chat_widget.config_ref()).await?;
+    // Prime the running server's auth cache, then simulate login in another process.
+    app_server.read_account().await?;
+    app.chat_widget.update_account_state(
+        Some(crate::status::StatusAccountDisplay::ChatGpt {
+            email: Some("first@example.com".to_string()),
+            plan: Some("Plus".to_string()),
+        }),
+        Some(codex_protocol::account::PlanType::Plus),
+        /*has_chatgpt_account*/ true,
+        /*has_codex_backend_auth*/ true,
+    );
+    write_chatgpt_auth(
+        &codex_home,
+        ChatGptAuthFixture::new("second-access")
+            .email("second@example.com")
+            .account_id("second-account")
+            .plan_type("pro"),
+        AuthCredentialsStoreMode::File,
+    )
+    .expect("write external login fixture");
+    while rx.try_recv().is_ok() {}
+    let mut tui = crate::tui::test_support::make_test_tui()?;
+    app.handle_event(
+        &mut tui,
+        &mut app_server,
+        AppEvent::RefreshRateLimits {
+            origin: RateLimitRefreshOrigin::StatusCommand { request_id: 0 },
+        },
+    )
+    .await?;
+    let status = std::iter::from_fn(|| rx.try_recv().ok())
+        .find_map(|event| match event {
+            AppEvent::InsertHistoryCell(cell) => Some(
+                cell.display_lines(/*width*/ 120)
+                    .into_iter()
+                    .map(|line| line.to_string())
+                    .collect::<Vec<_>>()
+                    .join("\n"),
+            ),
+            _ => None,
+        })
+        .expect("status card after account refresh");
+    let account_line = status
+        .lines()
+        .find(|line| line.contains("Account:"))
+        .expect("account line");
+    insta::assert_snapshot!("status_after_external_login", account_line.trim());
+    assert_eq!(
+        app.chat_widget.status_account_display(),
+        Some(&crate::status::StatusAccountDisplay::ChatGpt {
+            email: Some("second@example.com".to_string()),
+            plan: Some("Pro".to_string()),
+        })
+    );
+    app_server.shutdown().await?;
+    Ok(())
+}
