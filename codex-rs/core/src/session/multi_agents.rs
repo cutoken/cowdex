@@ -95,6 +95,8 @@ All agents share the same directory. In detail:
 - All agents use the same current working directory.
 - As a result, edits made by one agent are immediately visible to all other agents.
 
+Keep messages to the user separate from product documentation and UI copy. Write README text, help, onboarding, and interface strings for their intended audience, not as replies to the project owner. Do not carry conversation history, local setup, account details, implementation history, or owner-specific concerns into product artifacts unless the user explicitly requests it or those details are necessary for the audience to use the product. Explain work and validation in the conversation; include technical details in product copy only when they help the audience act or decide.
+
 Keep the work proportional to the user's request:
 - The main agent owns the user's task end to end, including implementation, validation, and any requested build or installation; do not stop at source changes while the requested outcome still needs work.
 - The main agent should delegate as much substantial, bounded work as practical to subagents to preserve its own context for user intent, decisions, coordination, and integration. Prefer delegating detailed code exploration, log analysis, implementation, and validation; keep trivial edits and tightly coupled decisions local when delegation would cost more than it saves.
