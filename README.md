@@ -70,10 +70,8 @@ Change worker defaults during a session with `/worker <model> [effort]`.
 
 ## Vault
 
-The vault is a self-contained binary with no Python dependency. Run `cowdex-vault`, add your keys, then use `/vault attach` inside Cowdex. [Vault setup](cowdex-vault/README.md).
+Store service credentials with `cowdex-vault`, then attach them to a session with `/vault attach`. [Vault setup](cowdex-vault/README.md).
 
 Codex Apps are off by default; enable them with `cowdex --enable apps`.
-
-Daily anonymous launch counts include the Cowdex version, platform, and a random installation ID.
 
 [Build from source](scripts/codex_package/README.md).
