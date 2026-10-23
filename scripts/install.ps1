@@ -37,7 +37,13 @@ try {
         }
         $Archive = Join-Path $scratch 'package.zip'
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-        Invoke-WebRequest -UseBasicParsing -Uri "$sourceUrl/cowdex-$target.zip" -OutFile $Archive
+        $downloadProgressPreference = $ProgressPreference
+        try {
+            # Windows PowerShell 5's per-chunk progress rendering slows large downloads.
+            $ProgressPreference = 'SilentlyContinue'
+            Write-Host 'Downloading Cowdex...'
+            Invoke-WebRequest -UseBasicParsing -Uri "$sourceUrl/cowdex-$target.zip" -OutFile $Archive
+        } finally { $ProgressPreference = $downloadProgressPreference }
     }
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $zip = [IO.Compression.ZipFile]::OpenRead([IO.Path]::GetFullPath($Archive))
