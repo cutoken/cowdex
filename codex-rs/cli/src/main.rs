@@ -53,6 +53,7 @@ mod desktop_app;
 mod doctor;
 mod exec_server_telemetry;
 mod keepwarm;
+mod launch_analytics;
 mod marketplace_cmd;
 mod mcp_cmd;
 mod migrate_rollouts;
@@ -2460,6 +2461,7 @@ async fn run_interactive_tui(
         }
         Err(err) => return Err(err),
     };
+    launch_analytics::record_launch();
     let start_tui = || {
         codex_tui::run_main(
             interactive.clone(),

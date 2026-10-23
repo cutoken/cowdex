@@ -1,0 +1,9 @@
+{
+  "name": "cowdex-analytics",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-10-23",
+  "workers_dev": false,
+  "routes": [{"pattern": "cowdex-analytics.agentcron.ai", "custom_domain": true}],
+  "analytics_engine_datasets": [{"binding": "COWDEX_ANALYTICS", "dataset": "cowdex_launches"}],
+  "observability": {"enabled": false}
+}

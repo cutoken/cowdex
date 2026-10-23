@@ -2284,7 +2284,7 @@ Response examples:
 
 Field notes:
 
-- `refreshToken` (bool): set `true` to force a token refresh.
+- `refreshToken` (bool): set `true` to force a token refresh. Account reads always reload saved credentials, so external logins are reflected even when this is `false`.
 - `email` is `null` when the ChatGPT account does not have an email address.
 - `requiresOpenaiAuth` reflects the active provider; when `false`, Codex can run without OpenAI credentials.
 - Amazon Bedrock reports `usesCodexManagedCredentials: true` when it uses a Bedrock API key managed by Codex. It reports `false` for external credential paths, including the AWS credential chain and configured command auth. This identifies whether Codex-managed credentials are selected; it does not validate that the credential source can resolve credentials.

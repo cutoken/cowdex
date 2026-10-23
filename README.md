@@ -74,4 +74,6 @@ The vault is a self-contained binary with no Python dependency. Run `cowdex-vaul
 
 Codex Apps are off by default; enable them with `cowdex --enable apps`.
 
+Daily anonymous launch counts include the Cowdex version, platform, and a random installation ID.
+
 [Build from source](scripts/codex_package/README.md).
