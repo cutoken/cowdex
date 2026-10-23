@@ -10,7 +10,6 @@ import subprocess
 import sys
 import tempfile
 import threading
-import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 REPO = "cutoken/cowdex"
@@ -217,7 +216,11 @@ def main():
                 lambda: run(
                     [
                         *powershell,
-                        f"irm {INSTALL_URL}.ps1 | iex; $ErrorActionPreference='Stop'; (Get-Command cowdex -ErrorAction Stop).Source",
+                        f"irm {INSTALL_URL}.ps1 | iex; $ErrorActionPreference='Stop'; "
+                        "if ((Get-Command cowdex -ErrorAction Stop).Source -ne "
+                        "(Join-Path $env:COWDEX_INSTALL_DIR 'cowdex.cmd')) { throw 'Wrong launcher on PATH' }; "
+                        "if (([Environment]::GetEnvironmentVariable('Path', 'User') -split ';') -notcontains "
+                        "$env:COWDEX_INSTALL_DIR) { throw 'Install directory missing from user PATH' }",
                     ],
                     env,
                     workspace,

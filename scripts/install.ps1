@@ -69,9 +69,14 @@ try {
         $temporary = Join-Path $BinDir ('.launcher-' + [Guid]::NewGuid().ToString('N'))
         [IO.File]::WriteAllText($temporary, $contents, [Text.UTF8Encoding]::new($false))
         $launcher = Join-Path $BinDir "$program.cmd"
-        if ([IO.File]::Exists($launcher)) { [IO.File]::Replace($temporary, $launcher, $null) }
+        if ([IO.File]::Exists($launcher)) { [IO.File]::Replace($temporary, $launcher, [NullString]::Value) }
         else { [IO.File]::Move($temporary, $launcher) }
     }
+    $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    if (($userPath -split ';') -notcontains $BinDir) {
+        [Environment]::SetEnvironmentVariable('Path', "$BinDir;$userPath".TrimEnd(';'), 'User')
+    }
+    if (($env:Path -split ';') -notcontains $BinDir) { $env:Path = "$BinDir;$env:Path" }
     Write-Host "Installed Cowdex $version at $installed"
     Write-Host "Command: $(Join-Path $BinDir 'cowdex.cmd')"
 } finally {
