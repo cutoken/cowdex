@@ -3,7 +3,7 @@ source: tui/src/history_cell/tests.rs
 expression: rendered
 ---
 ╭─────────────────────────────────────╮
-│ 🐮 Cowdex (v0.163.0)                │
+│ 🐮 Cowdex (v0.164.0)                │
 │                                     │
 │ model:     gpt-5   /model to change │
 │ directory: /tmp/project             │

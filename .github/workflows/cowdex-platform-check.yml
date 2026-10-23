@@ -2,6 +2,11 @@ name: Cowdex platform check
 
 on:
   workflow_dispatch:
+    inputs:
+      baseline_release:
+        description: Previous release to upgrade from
+        default: cowdex-v0.163.0-r6
+        type: string
 
 permissions:
   contents: read
@@ -21,7 +26,10 @@ jobs:
         with:
           python-version: "3.12"
       - name: Test public installation, update, and session
-        run: python scripts/check_cowdex_release.py --report platform-check.json
+        env:
+          COWDEX_CHECK_BASELINE: ${{ inputs.baseline_release }}
+        run: python scripts/check_cowdex_release.py --baseline-release "$COWDEX_CHECK_BASELINE" --report platform-check.json
+        shell: bash
       - name: Preserve results
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0

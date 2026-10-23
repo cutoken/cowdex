@@ -4,7 +4,7 @@ assertion_line: 1213
 expression: rendered
 ---
 ╭───────────────────────────────────────────────────╮
-│ ✨ Update available! 0.163.0 -> 9.9.9             │
+│ ✨ Update available! 0.164.0 -> 9.9.9             │
 │ Run cowdex update to update.                      │
 │                                                   │
 │ See full release notes:                           │

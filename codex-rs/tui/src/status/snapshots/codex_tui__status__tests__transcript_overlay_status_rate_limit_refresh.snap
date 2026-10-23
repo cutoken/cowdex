@@ -7,7 +7,7 @@ before:
 /status
 
 ╭──────────────────────────────────────────────────────────────────────────╮
-│  🐮  Cowdex (v0.163.0)                                                    │
+│  🐮  Cowdex (v0.164.0)                                                    │
 │                                                                          │
 │ Visit https://chatgpt.com/codex/settings/usage for up-to-date            │
 │ information on rate limits and credits                                   │
@@ -39,7 +39,7 @@ after:
 /status
 
 ╭───────────────────────────────────────────────────────────────────────────╮
-│  🐮  Cowdex (v0.163.0)                                                     │
+│  🐮  Cowdex (v0.164.0)                                                     │
 │                                                                           │
 │ Visit https://chatgpt.com/codex/settings/usage for up-to-date             │
 │ information on rate limits and credits                                    │

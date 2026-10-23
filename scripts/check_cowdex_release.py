@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 REPO = "cutoken/cowdex"
@@ -127,6 +128,7 @@ class ModelRequest(BaseHTTPRequestHandler):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument("--baseline-release")
     options = parser.parse_args()
     report = {"os": platform.system(), "architecture": platform.machine(), "checks": []}
     options.report.parent.mkdir(parents=True, exist_ok=True)
@@ -198,6 +200,36 @@ def main():
         initial = next((package_root / "releases").iterdir())
         metadata = json.loads((initial / "codex-package.json").read_text())
         report["release"] = metadata.get("releaseVersion", metadata["version"])
+        windows_install = f"irm {INSTALL_URL}.ps1 | iex"
+        if options.baseline_release:
+            installer = root / (
+                "baseline-install.ps1" if windows else "baseline-install.sh"
+            )
+            urllib.request.urlretrieve(
+                INSTALL_URL + (".ps1" if windows else ".sh"), installer
+            )
+            env["COWDEX_TEST_INSTALLER"] = str(installer)
+            env["COWDEX_TEST_BASELINE"] = options.baseline_release
+            windows_install = (
+                "& $env:COWDEX_TEST_INSTALLER -Release $env:COWDEX_TEST_BASELINE"
+            )
+            before_baseline = set((package_root / "releases").iterdir())
+
+            def install_baseline():
+                command = (
+                    [*powershell, windows_install]
+                    if windows
+                    else ["sh", installer, "--release", options.baseline_release]
+                )
+                return run(command, env, workspace, timeout=300)
+
+            if check("install previous release for upgrade", install_baseline) is None:
+                return 1
+            initial = (
+                set((package_root / "releases").iterdir()) - before_baseline
+            ).pop()
+        baseline = json.loads((initial / "codex-package.json").read_text())
+        report["baseline_release"] = baseline.get("releaseVersion", baseline["version"])
         executable = initial / "bin" / ("cowdex.exe" if windows else "cowdex")
 
         def launch():
@@ -216,7 +248,7 @@ def main():
                 lambda: run(
                     [
                         *powershell,
-                        f"irm {INSTALL_URL}.ps1 | iex; $ErrorActionPreference='Stop'; "
+                        f"{windows_install}; $ErrorActionPreference='Stop'; "
                         "if ((Get-Command cowdex -ErrorAction Stop).Source -ne "
                         "(Join-Path $env:COWDEX_INSTALL_DIR 'cowdex.cmd')) { throw 'Wrong launcher on PATH' }; "
                         "if (([Environment]::GetEnvironmentVariable('Path', 'User') -split ';') -notcontains "
@@ -303,7 +335,11 @@ supports_websockets = false
                     current.get("releaseVersion", current["version"])
                     == report["release"]
                 )
-                return "Public cowdex update replaced launchers and preserved settings, credentials, old package, and session"
+                if options.baseline_release:
+                    assert report["baseline_release"] != report["release"], (
+                        "The upgrade did not cross release versions"
+                    )
+                return f"{report['baseline_release']} -> {report['release']}; preserved settings, credentials, old package, and session"
 
             check("public updater with an existing session", update)
 
@@ -334,7 +370,7 @@ supports_websockets = false
         check("documented usage export", advertised_usage_export)
         report["passed"] = all(item["passed"] for item in report["checks"])
         report["upgrade_scope"] = (
-            "Reinstall published latest through the real updater; older release binaries are unavailable"
+            "Version upgrade" if options.baseline_release else "Reinstall latest"
         )
         options.report.write_text(json.dumps(report, indent=2) + "\n")
         print(json.dumps(report, indent=2))
