@@ -105,11 +105,14 @@ async fn user_turn_reloads_saved_login_after_usage_limit() -> Result<()> {
     Ok(())
 }
 
-#[test_case("new-account"; "different_account")]
-#[test_case("account_id"; "same_account_new_token")]
+#[test_case("new-account", false; "external_login_different_account")]
+#[test_case("account_id", false; "external_login_same_account_new_token")]
+#[test_case("new-account", true; "sibling_reloaded_different_account")]
+#[test_case("account_id", true; "sibling_reloaded_same_account_new_token")]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn user_turn_reconnects_websocket_only_when_saved_login_changes(
     account_id: &str,
+    sibling_reloaded: bool,
 ) -> Result<()> {
     skip_if_no_network!(Ok(()));
     let server = start_websocket_server(vec![
@@ -129,7 +132,9 @@ async fn user_turn_reconnects_websocket_only_when_saved_login_changes(
 
     save_new_login(&test.config.codex_home, account_id)?;
     // A sibling session may notice the new login before this session's next turn.
-    test.thread_manager.auth_manager().reload().await;
+    if sibling_reloaded {
+        test.thread_manager.auth_manager().reload().await;
+    }
     test.submit_turn("use new login").await?;
     let headers = server
         .handshakes()
