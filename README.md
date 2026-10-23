@@ -38,6 +38,7 @@ Cowdex can then see your boards and files on AgentCron.
 - **Token counts:** See cached input, reasoning, output and total token usage live.
 - **Lighter storage:** Less SSD churn from logs and oversized session files.
 - **Keepwarm:** Keep extra accounts warm without interrupting your current login.
+- **Account switching:** Log into another account externally; your next message uses the new login without restarting Cowdex.
 - **Vault:** Let agents use API keys without pasting them into chats.
 - **Provider switching:** Continue the same conversation across providers.
 
