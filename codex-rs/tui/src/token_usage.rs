@@ -119,7 +119,8 @@ impl DailyTokenUsage {
             return false;
         }
         self.bucket = bucket;
-        self.active_turns.clear();
+        // Running turns can continue after a steer crosses the daily boundary.
+        // Keep their identities and cumulative baselines; reset only today's totals.
         self.total = TokenUsage::default();
         true
     }
@@ -174,3 +175,7 @@ impl fmt::Display for TokenUsage {
         )
     }
 }
+
+#[cfg(test)]
+#[path = "token_usage_tests.rs"]
+mod tests;

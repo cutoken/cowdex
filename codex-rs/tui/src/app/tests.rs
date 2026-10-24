@@ -22,6 +22,8 @@ mod session_summary;
 mod startup;
 #[path = "tests/thread_usage.rs"]
 mod thread_usage;
+#[path = "tests/token_counters.rs"]
+mod token_counters;
 #[path = "tests/turn_submission.rs"]
 mod turn_submission;
 

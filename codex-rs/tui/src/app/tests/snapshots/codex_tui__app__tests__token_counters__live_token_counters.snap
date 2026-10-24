@@ -1,0 +1,5 @@
+---
+source: tui/src/app/tests/token_counters.rs
+expression: app.chat_widget.status_line_text().unwrap()
+---
+T 20 | CI 2 | NI 6 | OUT_R 0 | OUT_T 10
