@@ -57,19 +57,24 @@ pub(crate) async fn handle_retryable_response_stream_error(
         ResponsesStreamRequest::RemoteCompactionV2 => RetryOperation::RemoteCompactionV2,
     };
 
-    if matches!(
-        err.details(),
-        CodexErrorDetails::ServerOverloaded | CodexErrorDetails::InternalServerError
-    ) || err
-        .http_status_code_value()
-        .is_some_and(|status| (500..600).contains(&status))
+    let throttled = err.http_status_code_value() == Some(429);
+    if throttled
+        || matches!(
+            err.details(),
+            CodexErrorDetails::ServerOverloaded | CodexErrorDetails::InternalServerError
+        )
+        || err
+            .http_status_code_value()
+            .is_some_and(|status| (500..600).contains(&status))
         || matches!(err.details(), CodexErrorDetails::Stream(message)
             if message.starts_with("An error occurred while processing your request"))
     {
-        if client_session.try_switch_fallback_transport(
-            &turn_context.session_telemetry,
-            &turn_context.model_info,
-        ) {
+        if !throttled
+            && client_session.try_switch_fallback_transport(
+                &turn_context.session_telemetry,
+                &turn_context.model_info,
+            )
+        {
             sess.send_event(
                 turn_context,
                 EventMsg::Warning(WarningEvent {
@@ -87,9 +92,14 @@ pub(crate) async fn handle_retryable_response_stream_error(
             error = %err,
             "server error; retrying in 60 seconds without a retry limit"
         );
+        let reason = if throttled {
+            "Rate limited"
+        } else {
+            "Server error"
+        };
         sess.notify_stream_error(
             turn_context,
-            format!("Server error. Retrying in 60s (attempt {retry_count}; no retry limit)"),
+            format!("{reason}. Retrying in 60s (attempt {retry_count}; no retry limit)"),
             err,
         )
         .await;

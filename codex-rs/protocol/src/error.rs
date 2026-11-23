@@ -377,7 +377,6 @@ impl CodexErr {
             | CodexErrorDetails::UnsupportedOperation(_)
             | CodexErrorDetails::Sandbox(_)
             | CodexErrorDetails::LandlockSandboxExecutableNotProvided
-            | CodexErrorDetails::RetryLimit(_)
             | CodexErrorDetails::ContextWindowExceeded
             | CodexErrorDetails::ThreadNotFound(_)
             | CodexErrorDetails::AgentLimitReached { .. }
@@ -386,6 +385,7 @@ impl CodexErr {
             | CodexErrorDetails::UsageLimitReached(_)
             | CodexErrorDetails::CyberPolicy { .. }
             | CodexErrorDetails::MisalignmentPolicyViolation { .. } => false,
+            CodexErrorDetails::RetryLimit(err) => err.status == StatusCode::TOO_MANY_REQUESTS,
             CodexErrorDetails::Stream(..)
             | CodexErrorDetails::Timeout
             | CodexErrorDetails::RequestTimeout

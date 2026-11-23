@@ -38,6 +38,8 @@ enum RequestKind {
     Compaction,
 }
 
+#[test_case(Failure::Http(429), RequestKind::Sampling; "http_429_sampling")]
+#[test_case(Failure::Http(429), RequestKind::Compaction; "http_429_compaction")]
 #[test_case(Failure::Http(500), RequestKind::Sampling; "http_500_sampling")]
 #[test_case(Failure::Http(503), RequestKind::Sampling; "http_503_sampling")]
 #[test_case(Failure::Http(502), RequestKind::Compaction; "http_502_compaction")]
@@ -90,7 +92,7 @@ async fn server_errors_recover_beyond_old_limits_at_fixed_sixty_seconds(
     }
     for attempt in 1..=25 {
         let retry = telemetry.next_retry().await;
-        if attempt == 1 && matches!(failure, Failure::Stream(_) | Failure::ProcessingError) {
+        if attempt == 1 && !matches!(failure, Failure::Http(500..=599)) {
             let EventMsg::StreamError(error) = wait_for_event(&test.codex, |event| {
                 matches!(event, EventMsg::StreamError(_))
             })
@@ -98,16 +100,22 @@ async fn server_errors_recover_beyond_old_limits_at_fixed_sixty_seconds(
             else {
                 unreachable!()
             };
-            insta::assert_snapshot!("unlimited_server_retry_message", error.message);
+            if matches!(failure, Failure::Http(429)) {
+                insta::assert_snapshot!(error.message, @"Rate limited. Retrying in 60s (attempt 1; no retry limit)");
+            } else {
+                insta::assert_snapshot!("unlimited_server_retry_message", error.message);
+            }
         }
         let (layer, operation) = match (failure, request) {
+            (
+                Failure::Http(429) | Failure::Stream(_) | Failure::ProcessingError,
+                RequestKind::Sampling,
+            ) => ("stream", "sampling"),
+            (
+                Failure::Http(429) | Failure::Stream(_) | Failure::ProcessingError,
+                RequestKind::Compaction,
+            ) => ("stream", "remote_compaction_v2"),
             (Failure::Http(_), _) => ("http", "request"),
-            (Failure::Stream(_) | Failure::ProcessingError, RequestKind::Sampling) => {
-                ("stream", "sampling")
-            }
-            (Failure::Stream(_) | Failure::ProcessingError, RequestKind::Compaction) => {
-                ("stream", "remote_compaction_v2")
-            }
         };
         assert_eq!(
             retry,

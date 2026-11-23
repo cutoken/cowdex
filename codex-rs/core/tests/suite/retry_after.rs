@@ -1113,10 +1113,8 @@ async fn websocket_connection_limit_retries_with_local_backoff() -> Result<()> {
     Ok(())
 }
 
-// TODO(anp) respect Retry-After
-/// Nested websocket retry headers are currently ignored, leaving rate-limit errors terminal.
 #[tokio::test(flavor = "current_thread")]
-async fn websocket_rate_limit_with_nested_retry_after_is_terminal() -> Result<()> {
+async fn websocket_rate_limit_wait_can_be_interrupted() -> Result<()> {
     skip_if_no_network!(Ok(()));
 
     let mut telemetry = RetryTelemetryCapture::install();
@@ -1145,117 +1143,15 @@ async fn websocket_rate_limit_with_nested_retry_after_is_terminal() -> Result<()
         .build_with_websocket_server(&server)
         .await?;
 
-    submit_user_input(&test, "surface the websocket rate limit").await?;
+    submit_user_input(&test, "retry a throttled request").await?;
 
-    let mut error_events = 0;
-    let mut stream_error_events = 0;
-    loop {
-        match wait_for_event(&test.codex, |_| true).await {
-            EventMsg::Error(error) => {
-                error_events += 1;
-                assert_eq!(
-                    error.codex_error_info,
-                    Some(CodexErrorInfo::ResponseTooManyFailedAttempts {
-                        http_status_code: Some(429),
-                    })
-                );
-            }
-            EventMsg::StreamError(_) => stream_error_events += 1,
-            EventMsg::TurnComplete(event) => {
-                assert_eq!(
-                    event.error.and_then(|error| error.codex_error_info),
-                    Some(CodexErrorInfo::ResponseTooManyFailedAttempts {
-                        http_status_code: Some(429),
-                    })
-                );
-                break;
-            }
-            _ => {}
-        }
-    }
-
-    assert_eq!(error_events, 1);
-    assert_eq!(stream_error_events, 0);
-    let request_count: usize = server.connections().iter().map(Vec::len).sum();
-    assert_eq!(request_count, 2, "expected only prewarm and terminal error");
-    assert_eq!(
-        telemetry.events.try_recv(),
-        Err(mpsc::error::TryRecvError::Empty)
-    );
-    server.shutdown().await;
-
-    Ok(())
-}
-
-/// Headerless websocket rate limits complete with the same terminal error as nested headers.
-#[tokio::test(flavor = "current_thread")]
-async fn websocket_rate_limit_without_retry_after_is_terminal() -> Result<()> {
-    skip_if_no_network!(Ok(()));
-
-    let mut telemetry = RetryTelemetryCapture::install();
-    let server = responses::start_websocket_server(vec![vec![
-        vec![
-            responses::ev_response_created("prewarm"),
-            responses::ev_completed("prewarm"),
-        ],
-        vec![json!({
-            "type": "error",
-            "status": 429,
-            "error": {
-                "type": "rate_limit_error",
-                "code": "rate_limit_exceeded",
-                "message": "Rate limit exceeded."
-            }
-        })],
-    ]])
+    assert_eq!(telemetry.next_retry().await.delay, Duration::from_secs(60));
+    test.codex.submit(Op::Interrupt).await?;
+    wait_for_event(&test.codex, |event| {
+        matches!(event, EventMsg::TurnAborted(_))
+    })
     .await;
-    let test = test_codex()
-        .with_config(|config| {
-            config.model_provider.request_max_retries = Some(0);
-            config.model_provider.stream_max_retries = Some(1);
-        })
-        .build_with_websocket_server(&server)
-        .await?;
-
-    submit_user_input(&test, "surface the headerless websocket rate limit").await?;
-
-    let mut error_events = 0;
-    let mut stream_error_events = 0;
-    loop {
-        match wait_for_event(&test.codex, |_| true).await {
-            EventMsg::Error(error) => {
-                error_events += 1;
-                assert_eq!(
-                    error.codex_error_info,
-                    Some(CodexErrorInfo::ResponseTooManyFailedAttempts {
-                        http_status_code: Some(429),
-                    })
-                );
-            }
-            EventMsg::StreamError(_) => stream_error_events += 1,
-            EventMsg::TurnComplete(event) => {
-                assert_eq!(
-                    event.error.and_then(|error| error.codex_error_info),
-                    Some(CodexErrorInfo::ResponseTooManyFailedAttempts {
-                        http_status_code: Some(429),
-                    })
-                );
-                break;
-            }
-            _ => {}
-        }
-    }
-
-    assert_eq!(error_events, 1);
-    assert_eq!(stream_error_events, 0);
-    let request_count: usize = server.connections().iter().map(Vec::len).sum();
-    assert_eq!(request_count, 2, "expected only prewarm and terminal error");
-    assert_eq!(
-        telemetry.events.try_recv(),
-        Err(mpsc::error::TryRecvError::Empty)
-    );
     server.shutdown().await;
-
     Ok(())
 }
 

@@ -41,7 +41,7 @@ fn retryability_preserves_error_details_distinctions() {
                 status: StatusCode::TOO_MANY_REQUESTS,
                 request_id: None,
             }),
-            false,
+            true,
         ),
         (
             CodexErr::UnexpectedStatus(UnexpectedResponseError {
